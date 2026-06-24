@@ -1,0 +1,62 @@
+{
+  "_comment": "Даты по умолчанию — используются если не указаны в аргументах и не введены вручную",
+  "default_dates": [
+    {"checkin": "2026-08-01", "checkout": "2026-08-08"},
+    {"checkin": "2026-09-01", "checkout": "2026-09-08"},
+    {"checkin": "2026-10-01", "checkout": "2026-10-08"},
+    {"checkin": "2026-11-01", "checkout": "2026-11-08"},
+    {"checkin": "2026-12-01", "checkout": "2026-12-08"}
+  ],
+
+  "ozone": {
+    "label": "Ozone 1BR",
+    "url": "https://www.booking.com/hotel/th/ozone-bangtao-residence-by-metrika-phuket.html",
+    "competitors": [
+      {
+        "label": "C235 New Modern 1BR",
+        "url": "https://www.booking.com/hotel/th/c235-new-modern-1br-pool-amp-gym-close-to-beach.ru.html"
+      },
+      {
+        "label": "the ozone bangtao by beringela",
+        "url": "https://www.booking.com/hotel/th/the-ozone-bangtao-by-beringela.ru.html"
+      },
+      {
+        "label": "brand new ozone bangtao condo by lofty",
+        "url": "https://www.booking.com/hotel/th/brand-new-ozone-bangtao-condo-by-lofty.ru.html"
+      },
+      {
+        "label": "ozone condominium bang tao by my home phuket",
+        "url": "https://www.booking.com/hotel/th/ozone-condominium-bang-tao-by-my-home-phuket.ru.html"
+      },
+      {
+        "label": "cozy 1 br bangtao beach",
+        "url": "https://www.booking.com/hotel/th/cozy-1-br-bangtao-beach.ru.html"
+      },
+      {
+        "label": "brand new 1br ozone condo panoramic windows 8557",
+        "url": "https://www.booking.com/hotel/th/brand-new-1br-ozone-condo-panoramic-windows-8557.ru.html"
+      },
+      {
+        "label": "new spacious condo 1br 42m2 ozone bangtao 8686",
+        "url": "https://www.booking.com/hotel/th/new-spacious-condo-1br-42m2-ozone-bangtao-8686.ru.html"
+      },
+      {
+        "label": "ozone apartment in lagune",
+        "url": "https://www.booking.com/hotel/th/ozone-apartment-in-lagune.ru.html"
+      },
+      {
+        "label": "stylish-one-bedroom-apartment-in-ozone-condominium",
+        "url": "https://www.booking.com/hotel/th/stylish-one-bedroom-apartment-in-ozone-condominium.ru.html"
+      },
+      {
+        "label": "c231 brand new 1br prime spot pool amp gym near beach",
+        "url": "https://www.booking.com/hotel/th/c231-brand-new-1br-prime-spot-pool-amp-gym-near-beach.ru.html"
+      }
+    ]
+  },
+  "cassia": {
+    "label": "Cassia 2BR",
+    "url": "https://www.booking.com/hotel/th/cassia-residence-apartments.html",
+    "competitors": []
+  }
+}

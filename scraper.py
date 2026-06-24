@@ -9,7 +9,8 @@ Usage:
     python3.12 scraper.py --property cassia                  # only Cassia + its competitors
     python3.12 scraper.py --checkin 2026-08-05 --checkout 2026-08-16 --property ozone
     python3.12 scraper.py --dates-file dates.txt --workers 2
-    python3.12 scraper.py --dates-file dates.txt --headless
+    python3.12 scraper.py --dates-file dates.txt
+    python3.12 scraper.py              # без дат — попросит ввести
 """
 
 import asyncio, random, re, argparse, logging, json
@@ -50,30 +51,18 @@ DELAY_MIN = 2.0
 DELAY_MAX = 4.5
 PAGE_LOAD_WAIT = 4.0
 
-# ── Мои объекты + их конкуренты ───────────────────────────────────────────────
-# Для каждого объекта: url + список конкурентов (добавляй/убирай URL по необходимости)
-PROPERTIES = {
-    "ozone": {
-        "label": "Ozone 1BR",
-        "url": "https://www.booking.com/hotel/th/ozone-bangtao-residence-by-metrika-phuket.html",
-        "competitors": [
-            # Вставляй URL конкурентов Ozone сюда:
-            {
-                "label": "C235 New Modern 1BR",
-                "url": "https://www.booking.com/hotel/th/c235-new-modern-1br-pool-amp-gym-close-to-beach.ru.html",
-            },
-        ],
-    },
-    "cassia": {
-        "label": "Cassia 2BR",
-        "url": "https://www.booking.com/hotel/th/cassia-residence-apartments.html",
-        "competitors": [
-            # Вставляй URL конкурентов Cassia сюда:
-            # {"label": "Название",  "url": "https://www.booking.com/hotel/th/SLUG.html"},
-            # {"label": "",          "url": "https://www.booking.com/hotel/th/SLUG.html"},
-        ],
-    },
-}
+PROPERTIES_FILE = Path(__file__).parent / "properties.json"
+
+
+def load_properties() -> dict:
+    if not PROPERTIES_FILE.exists():
+        log.error(f"Файл не найден: {PROPERTIES_FILE}")
+        raise SystemExit(1)
+    with open(PROPERTIES_FILE, encoding="utf-8") as f:
+        return json.load(f)
+
+
+PROPERTIES = load_properties()
 
 USER_AGENTS = [
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
@@ -423,7 +412,7 @@ async def scrape_property(
             try:
                 await page.wait_for_selector(sel, timeout=7000)
                 table_found = True
-                log.info(f"    ✓ Table found")
+                log.debug(f"    ✓ Table found")
                 break
             except PWTimeout:
                 continue
@@ -478,8 +467,8 @@ async def scrape_property(
                     '.hprt-price-block, [class*="price-block"]'
                 );
 
-                var origText  = origEl  ? origEl.innerText.trim()  : '';
-                var finalText = finalEl ? finalEl.innerText.trim() : '';
+                var origText  = origEl  ? (origEl.innerText  || origEl.textContent  || '').trim() : '';
+                var finalText = finalEl ? (finalEl.innerText || finalEl.textContent || '').trim() : '';
 
                 // Collect all numeric texts from price block
                 var allPrices = [];
@@ -689,10 +678,6 @@ async def scrape_property(
                 f"    ✓ {result.name}: {len(result.offers)} тарифов, "
                 f"мин={result.min_price}฿ макс={result.max_price}฿{disc_info}"
             )
-            for o in result.offers[:3]:
-                log.info(
-                    f"      cancel raw: {repr(o.cancellation)} | refundable={o.refundable}"
-                )
         else:
             log.warning(f"    ⚠ Нет тарифов: {result.name}")
             result.error = "no_offers"
@@ -1085,7 +1070,57 @@ async def run(
     print(f"\n✓ Файл: {output}")
 
 
-def build_date_pairs(args):
+def parse_date_input(s: str) -> str:
+    for fmt in ("%Y-%m-%d", "%d.%m.%Y", "%d/%m/%Y"):
+        try:
+            return datetime.strptime(s.strip(), fmt).strftime("%Y-%m-%d")
+        except ValueError:
+            continue
+    raise ValueError(f"Неверный формат даты: {s!r}. Используй YYYY-MM-DD или DD.MM.YYYY")
+
+
+def prompt_dates() -> list[tuple[str, str]]:
+    default_dates = PROPERTIES.get("default_dates", [])
+    pairs = []
+    print("\n─── Ввод дат ───────────────────────────────────────")
+    if default_dates:
+        print("Даты по умолчанию из properties.json:")
+        for i, d in enumerate(default_dates, 1):
+            print(f"  {i}. {d['checkin']} → {d['checkout']}")
+        print("Нажми Enter чтобы использовать их, или введи свои даты.")
+    print("Формат: YYYY-MM-DD или DD.MM.YYYY")
+    print("Несколько периодов: вводи по одному, пустая строка — конец.")
+    print("─────────────────────────────────────────────────────")
+
+    while True:
+        raw_ci = input("Заезд (checkin): ").strip()
+        if not raw_ci:
+            if default_dates:
+                return [(d["checkin"], d["checkout"]) for d in default_dates]
+            print("Нужно ввести хотя бы одну дату.")
+            continue
+        try:
+            ci = parse_date_input(raw_ci)
+        except ValueError as e:
+            print(e)
+            continue
+
+        raw_co = input("Выезд (checkout): ").strip()
+        try:
+            co = parse_date_input(raw_co)
+        except ValueError as e:
+            print(e)
+            continue
+
+        pairs.append((ci, co))
+        more = input("Добавить ещё период? (Enter — нет): ").strip()
+        if not more:
+            break
+
+    return pairs
+
+
+def build_date_pairs(args) -> list[tuple[str, str]]:
     if args.dates_file:
         pairs = []
         for line in Path(args.dates_file).read_text().splitlines():
@@ -1101,16 +1136,17 @@ def build_date_pairs(args):
         return pairs
     if args.checkin and args.checkout:
         return [(args.checkin, args.checkout)]
-    return [("2025-11-15", "2025-11-16"), ("2025-12-31", "2026-01-01")]
+    # Нет дат в аргументах — спросить интерактивно
+    return prompt_dates()
 
 
 def main():
     p = argparse.ArgumentParser(description="Booking.com scraper — Laguna Phuket")
     p.add_argument(
         "--property",
-        choices=["ozone", "cassia", "all"],
+        choices=[*PROPERTIES.keys(), "all"],
         default="all",
-        help="Какой объект анализировать (default: all)",
+        help=f"Объект: {', '.join(PROPERTIES.keys())} или all (default: all)",
     )
     p.add_argument("--checkin")
     p.add_argument("--checkout")
@@ -1120,9 +1156,7 @@ def main():
     p.add_argument(
         "--workers", type=int, default=2, help="Параллельных браузеров (макс 3)"
     )
-    p.add_argument(
-        "--headless", action="store_true", help="Запустить без GUI (браузер скрыт)"
-    )
+    p.add_argument("--visible", action="store_true", help="Показать браузер")
     args = p.parse_args()
 
     if args.workers > 3:
@@ -1143,7 +1177,7 @@ def main():
             prop_keys=prop_keys,
             adults=args.adults,
             output=args.output,
-            headless=args.headless,
+            headless=not args.visible,
             workers=args.workers,
         )
     )
