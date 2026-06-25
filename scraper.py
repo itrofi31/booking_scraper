@@ -1346,7 +1346,8 @@ def main():
     p.add_argument("--checkout")
     p.add_argument("--adults", type=int, default=2)
     p.add_argument("--dates-file", help="Файл с датами (YYYY-MM-DD YYYY-MM-DD)")
-    p.add_argument("--output", default="booking_analysis.xlsx")
+    ts = datetime.now().strftime("%Y-%m-%d_%H-%M")
+    p.add_argument("--output", default=f"booking_analysis_{ts}.xlsx")
     p.add_argument(
         "--workers",
         type=int,
@@ -1362,6 +1363,11 @@ def main():
 
     prop_keys = list(PROPERTIES.keys()) if args.property == "all" else [args.property]
     pairs = build_date_pairs(args)
+
+    # Auto-generate filename: property + datetime (if user didn't override --output)
+    if "booking_analysis_" in args.output:
+        prop_part = args.property if args.property != "all" else "all"
+        args.output = f"booking_{prop_part}_{ts}.xlsx"
 
     print(f"Объекты: {[PROPERTIES[k]['label'] for k in prop_keys]}")
     print(f"Дат: {len(pairs)}  Воркеров: {args.workers}")

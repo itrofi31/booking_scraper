@@ -52,7 +52,8 @@
         "label": "c231 brand new 1br prime spot pool amp gym near beach",
         "url": "https://www.booking.com/hotel/th/c231-brand-new-1br-prime-spot-pool-amp-gym-near-beach.ru.html"
       }
-    ]
+    ],
+		"_comment": "https://www.booking.com/searchresults.en-gb.html?latitude=8.00549571&longitude=98.30462434&checkin=2026-08-05&checkout=2026-08-16&group_adults=2&selected_currency=THB&nflt=ht_id%3D201"
   },
   "cassia": {
     "label": "Cassia 2BR",
@@ -86,6 +87,7 @@
         "label": "serenity 2bd apartments in cassia",
         "url": "https://www.booking.com/hotel/th/serenity-2bd-apartments-in-cassia.html"
       }
-		]
+		],
+		"_comment":"https://www.booking.com/searchresults.html?latitude=7.999197&longitude=98.297165&checkin=2026-08-05&checkout=2026-08-16&group_adults=2&selected_currency=THB&nflt=ht_id%3D201&radius=0.2"
   }
 }
