@@ -637,9 +637,13 @@ async def scrape_property(
                 else:
                     raise
 
+        nights_count = (
+            datetime.strptime(checkout, "%Y-%m-%d") - datetime.strptime(checkin, "%Y-%m-%d")
+        ).days or 1
+        min_total_price = nights_count * 300  # минимум 300฿/ночь — ниже явно ошибка парсинга
+
         seen = set()
         for raw in offers_raw:
-            #
             # Resolve prices: struck-through = original, lower = final
             all_p = raw.get("all_prices", [])
             struck = [x["val"] for x in all_p if x.get("isStruck")]
@@ -667,6 +671,16 @@ async def scrape_property(
                 price_orig = None
 
             if not price_final:
+                continue
+
+            # Sanity check: price too low for a real stay — likely wrong DOM element
+            if price_final < min_total_price:
+                log.warning(
+                    f"    ⚠ [{label}] подозрительно низкая цена {price_final}฿ "
+                    f"за {nights_count} ночей ({raw.get('room_type','?')}), "
+                    f"all_prices={[(x['val'], x['isStruck']) for x in all_p]}, "
+                    f"block_html={raw.get('block_html','')[:120]}"
+                )
                 continue
 
             disc_pct = None
