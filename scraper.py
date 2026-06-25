@@ -84,6 +84,7 @@ class RoomOffer:
     refundable: Optional[bool] = None
     breakfast: bool = False
     guests: Optional[int] = None
+    size_m2: Optional[int] = None
     currency: str = "THB"
 
     @property
@@ -417,7 +418,7 @@ async def scrape_property(
             log.warning(f"    ⚠ No room table: {result.name}")
             try:
                 safe = re.sub(r"[^\w]", "_", result.name or "unk")[:20]
-                await page.screenshot(path=f"debug_{safe}.png")
+                # await page.screenshot(path=f"debug_{safe}.png")
             except Exception:
                 pass
             result.error = "no_room_table"
@@ -558,6 +559,14 @@ async def scrape_property(
                 pageCancels.push(htmlToText(el).substring(0, 120));
             });
 
+            function getSize(row) {
+                // Look for m² in the entire row text
+                var text = (row.innerText || row.textContent || '');
+                var m = text.match(/(\d+)\s*m[²2]/i);
+                if (m) return parseInt(m[1]);
+                return null;
+            }
+
             function classifyCancel(cancel) {
                 var cl = cancel.toLowerCase();
                 var isNR = cl.indexOf('non-refund') !== -1 || cl.indexOf('no refund') !== -1 ||
@@ -580,6 +589,7 @@ async def scrape_property(
                 if (!cancel && idx < pageCancels.length) cancel = pageCancels[idx];
                 results.push({
                     room_type:  nameEl ? (nameEl.innerText || nameEl.textContent || '').trim() : '',
+                    size_m2:    getSize(row),
                     cancel:     cancel,
                     refundable: classifyCancel(cancel),
                     breakfast:  bfEl ? (bfEl.innerText || '').toLowerCase().indexOf('breakfast') !== -1 : false,
@@ -606,6 +616,7 @@ async def scrape_property(
                         cancel:     cancel,
                         refundable: classifyCancel(cancel),
                         breakfast:  false,
+                        size_m2:    getSize(row),
                         guests:     getGuests(row),
                         orig_text:  p.orig_text,
                         final_text: p.final_text,
@@ -622,10 +633,14 @@ async def scrape_property(
                 break  # success
             except Exception as eval_err:
                 if "Execution context was destroyed" in str(eval_err) and _attempt < 2:
-                    log.warning(f"    ↻ [{label or url[34:60]}] context destroyed, повторная навигация…")
+                    log.warning(
+                        f"    ↻ [{label or url[34:60]}] context destroyed, повторная навигация…"
+                    )
                     try:
                         # Re-navigate — context is gone, waiting on broken page won't help
-                        await page.goto(full_url, wait_until="domcontentloaded", timeout=30000)
+                        await page.goto(
+                            full_url, wait_until="domcontentloaded", timeout=30000
+                        )
                         await asyncio.sleep(PAGE_LOAD_WAIT + 1.5)
                         await dismiss_all(page)
                         try:
@@ -638,9 +653,12 @@ async def scrape_property(
                     raise
 
         nights_count = (
-            datetime.strptime(checkout, "%Y-%m-%d") - datetime.strptime(checkin, "%Y-%m-%d")
+            datetime.strptime(checkout, "%Y-%m-%d")
+            - datetime.strptime(checkin, "%Y-%m-%d")
         ).days or 1
-        min_total_price = nights_count * 300  # минимум 300฿/ночь — ниже явно ошибка парсинга
+        min_total_price = (
+            nights_count * 300
+        )  # минимум 300฿/ночь — ниже явно ошибка парсинга
 
         seen = set()
         for raw in offers_raw:
@@ -702,6 +720,7 @@ async def scrape_property(
                     refundable=raw.get("refundable"),
                     breakfast=raw.get("breakfast", False),
                     guests=raw.get("guests"),
+                    size_m2=raw.get("size_m2"),
                     currency=CURRENCY,
                 )
             )
@@ -776,22 +795,28 @@ def export_excel(results: list, output_path: str):
         return PatternFill("solid", fgColor=c)
 
     def fnt(bold=False, color="000000", size=10, italic=False, underline=None):
-        return XFont(name="Arial", bold=bold, color=color, size=size, italic=italic,
-                     underline=underline)
+        return XFont(
+            name="Arial",
+            bold=bold,
+            color=color,
+            size=size,
+            italic=italic,
+            underline=underline,
+        )
 
     def aln(h="center", wrap=False):
         return Alignment(horizontal=h, vertical="center", wrap_text=wrap)
 
-    _thin  = Side(style="thin",   color="BDD7EE")
+    _thin = Side(style="thin", color="BDD7EE")
     _thick = Side(style="medium", color="2E75B6")
 
     def bdr(top=False, bottom=False, left=False, right=False):
         """thin interior, thick on prop-group boundary sides."""
         return Border(
-            top    = _thick if top    else _thin,
-            bottom = _thick if bottom else _thin,
-            left   = _thick if left   else _thin,
-            right  = _thick if right  else _thin,
+            top=_thick if top else _thin,
+            bottom=_thick if bottom else _thin,
+            left=_thick if left else _thin,
+            right=_thick if right else _thin,
         )
 
     def apply_prop_border(ws, start_r, end_r, n_cols):
@@ -800,10 +825,10 @@ def export_excel(results: list, output_path: str):
             for c in range(1, n_cols + 1):
                 cell = ws.cell(row=r, column=c)
                 cell.border = bdr(
-                    top    = (r == start_r),
-                    bottom = (r == end_r),
-                    left   = (c == 1),
-                    right  = (c == n_cols),
+                    top=(r == start_r),
+                    bottom=(r == end_r),
+                    left=(c == 1),
+                    right=(c == n_cols),
                 )
 
     wb = Workbook()
@@ -853,14 +878,17 @@ def export_excel(results: list, output_path: str):
         row += 1
 
         own_props = [r for r in date_results if r.is_own]
+
         def _min_offers(refundable_flag):
             prices = [
-                o.price_night for r in own_props for o in r.offers
+                o.price_night
+                for r in own_props
+                for o in r.offers
                 if o.price_night and o.refundable is refundable_flag
             ]
             return min(prices) if prices else None
 
-        ref_refundable     = _min_offers(True)   # мин возвратный своих
+        ref_refundable = _min_offers(True)  # мин возвратный своих
         ref_non_refundable = _min_offers(False)  # мин невозвратный своих
         ref = next(
             (r.min_price for r in date_results if r.is_own and r.min_price), None
@@ -870,7 +898,10 @@ def export_excel(results: list, output_path: str):
         )
 
         ci_str, co_str = date_key.split(" → ")
-        nights = (datetime.strptime(co_str, "%Y-%m-%d") - datetime.strptime(ci_str, "%Y-%m-%d")).days or 1
+        nights = (
+            datetime.strptime(co_str, "%Y-%m-%d")
+            - datetime.strptime(ci_str, "%Y-%m-%d")
+        ).days or 1
 
         for prop in sorted_r:
             is_own = prop.is_own
@@ -879,15 +910,30 @@ def export_excel(results: list, output_path: str):
             name_str = f"{'★ ' if is_own else ''}{prop.display_name or prop.name}"
 
             # Build clickable URL with checkin/checkout dates
-            base_url = re.sub(r'\.[a-z]{2}(-[a-z]{2})?\.html', '.html', prop.url.split('?')[0])
-            prop_link = (f"{base_url}?checkin={prop.checkin}&checkout={prop.checkout}"
-                         f"&group_adults={prop.adults}&no_rooms=1&selected_currency={CURRENCY}")
+            base_url = re.sub(
+                r"\.[a-z]{2}(-[a-z]{2})?\.html", ".html", prop.url.split("?")[0]
+            )
+            prop_link = (
+                f"{base_url}?checkin={prop.checkin}&checkout={prop.checkout}"
+                f"&group_adults={prop.adults}&no_rooms=1&selected_currency={CURRENCY}"
+            )
 
             prop_start = row
 
             if not prop.offers:
                 for ci, val in enumerate(
-                    [name_str, f"— {prop.error or 'нет данных'}", "", "", "", "", "", "", ""], 1
+                    [
+                        name_str,
+                        f"— {prop.error or 'нет данных'}",
+                        "",
+                        "",
+                        "",
+                        "",
+                        "",
+                        "",
+                        "",
+                    ],
+                    1,
                 ):
                     c = ws.cell(row=row, column=ci, value=val)
                     c.fill = fill("FFF2CC")
@@ -895,7 +941,9 @@ def export_excel(results: list, output_path: str):
                     c.alignment = aln(h="left" if ci <= 2 else "center")
                     if ci == 1:
                         c.hyperlink = prop_link
-                        c.font = fnt(italic=True, color="AA6600", size=9, underline="single")
+                        c.font = fnt(
+                            italic=True, color="AA6600", size=9, underline="single"
+                        )
                 ws.row_dimensions[row].height = 17
                 row += 1
                 apply_prop_border(ws, prop_start, row - 1, N)
@@ -933,15 +981,24 @@ def export_excel(results: list, output_path: str):
                 adr = round(offer.price_final / nights) if offer.price_final else None
 
                 row_vals = [
-                    name_str if is_first else "",   # 1
-                    offer.room_type or "—",          # 2
-                    offer.guests,                    # 3
-                    offer.price_final,               # 4  Цена
-                    adr,                             # 5  ADR
-                    (offer.price_original if offer.price_original != offer.price_final else None),  # 6
-                    disc_str,                        # 7
-                    ref_str,                         # 8
-                    vs_str,                          # 9
+                    name_str if is_first else "",  # 1
+                    (
+                        f"{offer.room_type} · {offer.size_m2}m²"
+                        if offer.size_m2
+                        else offer.room_type
+                    )
+                    or "—",  # 2
+                    offer.guests,  # 3
+                    offer.price_final,  # 4  Цена
+                    adr,  # 5  ADR
+                    (
+                        offer.price_original
+                        if offer.price_original != offer.price_final
+                        else None
+                    ),  # 6
+                    disc_str,  # 7
+                    ref_str,  # 8
+                    vs_str,  # 9
                 ]
                 for ci, val in enumerate(row_vals, 1):
                     c = ws.cell(row=row, column=ci, value=val)
@@ -951,7 +1008,9 @@ def export_excel(results: list, output_path: str):
                     if ci == 1:
                         if is_first:
                             c.hyperlink = prop_link
-                            c.font = fnt(bold=is_own, color="0563C1", size=9, underline="single")
+                            c.font = fnt(
+                                bold=is_own, color="0563C1", size=9, underline="single"
+                            )
                         else:
                             c.font = fnt(color=prop_fg, size=9)
                     elif ci == 4:
@@ -1100,11 +1159,27 @@ async def run(
         jobs = []
         for key in prop_keys:
             prop = PROPERTIES[key]
-            jobs.append({"url": prop["url"], "checkin": checkin, "checkout": checkout,
-                         "adults": adults, "is_own": True, "label": prop["label"]})
+            jobs.append(
+                {
+                    "url": prop["url"],
+                    "checkin": checkin,
+                    "checkout": checkout,
+                    "adults": adults,
+                    "is_own": True,
+                    "label": prop["label"],
+                }
+            )
             for comp in prop["competitors"]:
-                jobs.append({"url": comp["url"], "checkin": checkin, "checkout": checkout,
-                             "adults": adults, "is_own": False, "label": comp.get("label", "")})
+                jobs.append(
+                    {
+                        "url": comp["url"],
+                        "checkin": checkin,
+                        "checkout": checkout,
+                        "adults": adults,
+                        "is_own": False,
+                        "label": comp.get("label", ""),
+                    }
+                )
         return jobs
 
     total_jobs = sum(len(build_jobs(ci, co)) for ci, co in date_pairs)
@@ -1114,33 +1189,46 @@ async def run(
     RETRY_ERRORS = {"no_offers", "no_room_table", "timeout"}
 
     all_results = []
+    all_jobs_by_period = []  # [(jobs, batch)] for retry pass
+
     async with async_playwright() as pw:
         sem = asyncio.Semaphore(workers)
+
+        # ── Pass 1: scrape all periods without blocking on retries ─────────
         for checkin, checkout in date_pairs:
             log.info(f"\n{'─'*60}")
             log.info(f"📅  Период: {checkin} → {checkout}")
             log.info(f"{'─'*60}")
             jobs = build_jobs(checkin, checkout)
             batch = await scrape_batch(pw, jobs, headless=headless, sem=sem)
+            all_jobs_by_period.append((jobs, batch))
 
-            # Retry failed jobs (no_offers / no_room_table / timeout), max MAX_RETRIES times
-            for attempt in range(1, MAX_RETRIES + 1):
-                failed_jobs = [
-                    j for j, r in zip(jobs, batch)
-                    if r.error in RETRY_ERRORS
-                ]
-                if not failed_jobs:
-                    break
-                log.info(f"  ↻ Повтор {attempt}/{MAX_RETRIES}: {len(failed_jobs)} объектов "
-                         f"({', '.join(j['label'] or j['url'][34:55] for j in failed_jobs)})")
-                await asyncio.sleep(2.0 * attempt)
-                retried = await scrape_batch(pw, failed_jobs, headless=headless, sem=sem)
-                # Replace failed results with retried ones
-                retry_map = {(r.url, r.checkin): r for r in retried}
-                batch = [
-                    retry_map.get((r.url, r.checkin), r) for r in batch
-                ]
+        # ── Pass 2: retry all failures across all periods ──────────────────
+        for attempt in range(1, MAX_RETRIES + 1):
+            failed = [
+                (i, j)
+                for i, (jobs, batch) in enumerate(all_jobs_by_period)
+                for j, r in zip(jobs, batch)
+                if r.error in RETRY_ERRORS
+            ]
+            if not failed:
+                break
+            labels = ", ".join(j["label"] or j["url"][34:55] for _, j in failed)
+            log.info(
+                f"\n↻ Повтор {attempt}/{MAX_RETRIES}: {len(failed)} объектов ({labels})"
+            )
+            await asyncio.sleep(3.0 * attempt)
+            retry_jobs = [j for _, j in failed]
+            retried = await scrape_batch(pw, retry_jobs, headless=headless, sem=sem)
+            retry_map = {(r.url, r.checkin): r for r in retried}
+            # Patch results in-place
+            for i, (jobs, batch) in enumerate(all_jobs_by_period):
+                all_jobs_by_period[i] = (
+                    jobs,
+                    [retry_map.get((r.url, r.checkin), r) for r in batch],
+                )
 
+        for _, batch in all_jobs_by_period:
             all_results.extend(batch)
 
     export_excel(all_results, output)
@@ -1180,7 +1268,9 @@ def parse_date_input(s: str) -> str:
             return datetime.strptime(s.strip(), fmt).strftime("%Y-%m-%d")
         except ValueError:
             continue
-    raise ValueError(f"Неверный формат даты: {s!r}. Используй YYYY-MM-DD или DD.MM.YYYY")
+    raise ValueError(
+        f"Неверный формат даты: {s!r}. Используй YYYY-MM-DD или DD.MM.YYYY"
+    )
 
 
 def prompt_dates() -> list[tuple[str, str]]:
@@ -1258,7 +1348,10 @@ def main():
     p.add_argument("--dates-file", help="Файл с датами (YYYY-MM-DD YYYY-MM-DD)")
     p.add_argument("--output", default="booking_analysis.xlsx")
     p.add_argument(
-        "--workers", type=int, default=4, help="Параллельных браузеров (макс 8, default 4)"
+        "--workers",
+        type=int,
+        default=4,
+        help="Параллельных браузеров (макс 8, default 4)",
     )
     p.add_argument("--visible", action="store_true", help="Показать браузер")
     args = p.parse_args()
