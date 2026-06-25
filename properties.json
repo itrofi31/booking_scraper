@@ -57,6 +57,35 @@
   "cassia": {
     "label": "Cassia 2BR",
     "url": "https://www.booking.com/hotel/th/cassia-residence-apartments.html",
-    "competitors": []
+    "competitors": [
+			{
+        "label": "Cassia 2 BR Lake&Road View apt by NLA",
+        "url": "https://www.booking.com/hotel/th/laguna-apartaments-residences-2-bdr-1714.html"
+      },
+			{
+        "label": "Cassia 2 BR Sea View apt by NLA",
+        "url": "https://www.booking.com/hotel/th/laguna-apartments-residences-2-bedrooms-sea-view.html"
+      },
+			{
+        "label": "2 BR Apt near Laguna at Cassia 2310",
+        "url": "https://www.booking.com/hotel/th/cassia-2310.html"
+      },
+			{
+        "label": "Laguna 2BR Condo with Beach Shuttle - Cassia 231",
+				"url": "https://www.booking.com/hotel/th/cassia-2311.html"
+      },
+			{
+        "label": "cassia residences building 2 in laguna by banyan living/lakeview",
+        "url": "https://www.booking.com/hotel/th/cassia-residences-building-2-in-laguna-by-banyan-living.html"
+      },
+			{
+        "label": "Cassia 2 BR Sea View&Terrace apt by NLA",
+        "url": "https://www.booking.com/hotel/th/laguna-apartaments-residences-2-bdr-2714.html"
+      },
+			{
+        "label": "serenity 2bd apartments in cassia",
+        "url": "https://www.booking.com/hotel/th/serenity-2bd-apartments-in-cassia.html"
+      }
+		]
   }
 }

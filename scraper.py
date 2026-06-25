@@ -751,7 +751,8 @@ async def scrape_property(
         log.error(f"    ✗ Timeout [{label or url[34:60]}]: {url}")
         return result
     except Exception as e:
-        result.error = str(e)[:120]
+        err_str = str(e)
+        result.error = "context_destroyed" if "Execution context was destroyed" in err_str else err_str[:120]
         log.error(f"    ✗ Ошибка [{label or url[34:60]}]: {e}")
         return result
 
@@ -837,7 +838,6 @@ def export_excel(results: list, output_path: str):
     ws = wb.active
     ws.title = "Все тарифы"
     ws.sheet_view.showGridLines = False
-    ws.freeze_panes = "C3"
 
     COLS = [
         "Объект",
@@ -856,25 +856,25 @@ def export_excel(results: list, output_path: str):
     for r in results:
         by_date.setdefault(f"{r.checkin} → {r.checkout}", []).append(r)
 
-    row = 1
+    # Column headers — row 1, frozen so always visible while scrolling
+    for ci, h in enumerate(COLS, 1):
+        c = ws.cell(row=1, column=ci, value=h)
+        c.font = fnt(bold=True, color="FFFFFF", size=9)
+        c.fill = fill("2E75B6")
+        c.alignment = aln(wrap=True)
+        c.border = bdr()
+    ws.row_dimensions[1].height = 24
+    ws.freeze_panes = "C2"  # freeze row 1 (column headers) — always visible
+
+    row = 2
     for date_key, date_results in by_date.items():
-        # Date header
+        # Date header — bold separator, no repeated column headers
         ws.merge_cells(f"A{row}:{get_column_letter(N)}{row}")
         c = ws.cell(row=row, column=1, value=f"📅  {date_key}")
-        c.font = fnt(bold=True, color="FFFFFF", size=12)
+        c.font = fnt(bold=True, color="FFFFFF", size=11)
         c.fill = fill("1F3864")
         c.alignment = aln(h="left")
-        ws.row_dimensions[row].height = 26
-        row += 1
-
-        # Column headers
-        for ci, h in enumerate(COLS, 1):
-            c = ws.cell(row=row, column=ci, value=h)
-            c.font = fnt(bold=True, color="FFFFFF", size=9)
-            c.fill = fill("2E75B6")
-            c.alignment = aln(wrap=True)
-            c.border = bdr()
-        ws.row_dimensions[row].height = 30
+        ws.row_dimensions[row].height = 24
         row += 1
 
         own_props = [r for r in date_results if r.is_own]
@@ -1186,7 +1186,7 @@ async def run(
     log.info(f"Всего задач: {total_jobs} | Воркеров: {workers}")
 
     MAX_RETRIES = 2
-    RETRY_ERRORS = {"no_offers", "no_room_table", "timeout"}
+    RETRY_ERRORS = {"no_offers", "no_room_table", "timeout", "context_destroyed"}
 
     all_results = []
     all_jobs_by_period = []  # [(jobs, batch)] for retry pass
