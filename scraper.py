@@ -47,9 +47,9 @@ log = logging.getLogger(__name__)
 # ═════════════════════════════════════════════════════════════════════════════
 
 CURRENCY = "THB"
-DELAY_MIN = 2.0
-DELAY_MAX = 4.5
-PAGE_LOAD_WAIT = 4.0
+DELAY_MIN = 1.5
+DELAY_MAX = 3.0
+PAGE_LOAD_WAIT = 2.5
 
 PROPERTIES_FILE = Path(__file__).parent / "properties.json"
 
@@ -342,7 +342,7 @@ async def scrape_property(
 
     try:
         log.info(f"  → {(label or url[34:70])}")
-        await page.goto(full_url, wait_until="domcontentloaded", timeout=30000)
+        await page.goto(full_url, wait_until="domcontentloaded", timeout=35000)
         await asyncio.sleep(PAGE_LOAD_WAIT)
         await dismiss_all(page)
 
@@ -363,19 +363,15 @@ async def scrape_property(
         if not result.name:
             result.name = (await page.title()).split("–")[0].split("|")[0].strip()
 
-        # Check if dates need to be set
+        # Check if dates need to be set (only via visible button, no full page.content())
         needs_dates = False
         try:
             sp = page.locator(
                 'button:has-text("Show prices"), [data-testid="show-prices-button"]'
             ).first
-            needs_dates = await sp.is_visible(timeout=2000)
+            needs_dates = await sp.is_visible(timeout=1500)
         except Exception:
             pass
-        if not needs_dates:
-            needs_dates = (
-                checkin not in page.url and checkin not in await page.content()
-            )
 
         if needs_dates:
             log.info("    ℹ Dates not applied — using calendar")
@@ -436,14 +432,23 @@ async def scrape_property(
         """)
         try:
             await page.wait_for_selector(
-                '[data-testid="cancellation-policy"]', timeout=5000
+                '[data-testid="cancellation-policy"]', timeout=3000
             )
         except PWTimeout:
             pass
-        await asyncio.sleep(2.0)
+        await asyncio.sleep(0.8)
 
         # ── Extract ALL tariffs with discount-aware price parsing ─────────────
-        offers_raw = await page.evaluate(r"""
+        # Wait for page to fully settle — prevents "Execution context was destroyed" on JS redirects
+        try:
+            await page.wait_for_load_state("networkidle", timeout=8000)
+        except PWTimeout:
+            await asyncio.sleep(1.0)  # graceful fallback if still busy
+
+        offers_raw = []
+        for _attempt in range(3):
+            try:
+                offers_raw = await page.evaluate(r"""
         () => {
             var results = [];
 
@@ -556,7 +561,7 @@ async def scrape_property(
             function classifyCancel(cancel) {
                 var cl = cancel.toLowerCase();
                 var isNR = cl.indexOf('non-refund') !== -1 || cl.indexOf('no refund') !== -1 ||
-                           cl.indexOf('not refund') !== -1;
+                           cl.indexOf('not refund') !== -1 || cl.indexOf('reschedule') !== -1;
                 var isFR = !isNR && (cl.indexOf('free cancellation') !== -1 ||
                            cl.indexOf('free cancel') !== -1 || cl.indexOf('refundable') !== -1 ||
                            cl.indexOf('fully refund') !== -1);
@@ -614,6 +619,23 @@ async def scrape_property(
             return results;
         }
         """)
+                break  # success
+            except Exception as eval_err:
+                if "Execution context was destroyed" in str(eval_err) and _attempt < 2:
+                    log.warning(f"    ↻ [{label or url[34:60]}] context destroyed, повторная навигация…")
+                    try:
+                        # Re-navigate — context is gone, waiting on broken page won't help
+                        await page.goto(full_url, wait_until="domcontentloaded", timeout=30000)
+                        await asyncio.sleep(PAGE_LOAD_WAIT + 1.5)
+                        await dismiss_all(page)
+                        try:
+                            await page.wait_for_load_state("networkidle", timeout=6000)
+                        except PWTimeout:
+                            pass
+                    except Exception:
+                        await asyncio.sleep(2.0)
+                else:
+                    raise
 
         seen = set()
         for raw in offers_raw:
@@ -675,22 +697,22 @@ async def scrape_property(
                 f", {sum(1 for o in result.offers if o.discount_pct)} со скидкой"
             )
             log.info(
-                f"    ✓ {result.name}: {len(result.offers)} тарифов, "
+                f"    ✓ {result.display_name or result.name}: {len(result.offers)} тарифов, "
                 f"мин={result.min_price}฿ макс={result.max_price}฿{disc_info}"
             )
         else:
-            log.warning(f"    ⚠ Нет тарифов: {result.name}")
+            log.warning(f"    ⚠ Нет тарифов: {result.display_name or result.name}")
             result.error = "no_offers"
 
         return result
 
     except PWTimeout:
         result.error = "timeout"
-        log.error(f"    ✗ Timeout: {url}")
+        log.error(f"    ✗ Timeout [{label or url[34:60]}]: {url}")
         return result
     except Exception as e:
         result.error = str(e)[:120]
-        log.error(f"    ✗ Ошибка: {e}")
+        log.error(f"    ✗ Ошибка [{label or url[34:60]}]: {e}")
         return result
 
 
@@ -705,7 +727,7 @@ async def scrape_batch(
             ctx = await new_context(pw, headless=headless)
             page = await ctx.new_page()
             try:
-                await asyncio.sleep(random.uniform(0.5, 2.0))
+                await asyncio.sleep(random.uniform(0.3, 1.2))
                 return await scrape_property(
                     page,
                     job["url"],
@@ -732,15 +754,36 @@ def export_excel(results: list, output_path: str):
     def fill(c):
         return PatternFill("solid", fgColor=c)
 
-    def fnt(bold=False, color="000000", size=10, italic=False):
-        return XFont(name="Arial", bold=bold, color=color, size=size, italic=italic)
+    def fnt(bold=False, color="000000", size=10, italic=False, underline=None):
+        return XFont(name="Arial", bold=bold, color=color, size=size, italic=italic,
+                     underline=underline)
 
     def aln(h="center", wrap=False):
         return Alignment(horizontal=h, vertical="center", wrap_text=wrap)
 
-    def bdr():
-        s = Side(style="thin", color="BDD7EE")
-        return Border(top=s, bottom=s, left=s, right=s)
+    _thin  = Side(style="thin",   color="BDD7EE")
+    _thick = Side(style="medium", color="2E75B6")
+
+    def bdr(top=False, bottom=False, left=False, right=False):
+        """thin interior, thick on prop-group boundary sides."""
+        return Border(
+            top    = _thick if top    else _thin,
+            bottom = _thick if bottom else _thin,
+            left   = _thick if left   else _thin,
+            right  = _thick if right  else _thin,
+        )
+
+    def apply_prop_border(ws, start_r, end_r, n_cols):
+        """Re-apply borders so outer edges of property group are thick."""
+        for r in range(start_r, end_r + 1):
+            for c in range(1, n_cols + 1):
+                cell = ws.cell(row=r, column=c)
+                cell.border = bdr(
+                    top    = (r == start_r),
+                    bottom = (r == end_r),
+                    left   = (c == 1),
+                    right  = (c == n_cols),
+                )
 
     wb = Workbook()
 
@@ -755,6 +798,7 @@ def export_excel(results: list, output_path: str):
         "Тип номера / Тариф",
         "Гостей",
         "Цена ฿",
+        "ADR ฿",
         "До скидки ฿",
         "Скидка %",
         "Возвратность",
@@ -787,6 +831,16 @@ def export_excel(results: list, output_path: str):
         ws.row_dimensions[row].height = 30
         row += 1
 
+        own_props = [r for r in date_results if r.is_own]
+        def _min_offers(refundable_flag):
+            prices = [
+                o.price_night for r in own_props for o in r.offers
+                if o.price_night and o.refundable is refundable_flag
+            ]
+            return min(prices) if prices else None
+
+        ref_refundable     = _min_offers(True)   # мин возвратный своих
+        ref_non_refundable = _min_offers(False)  # мин невозвратный своих
         ref = next(
             (r.min_price for r in date_results if r.is_own and r.min_price), None
         )
@@ -794,33 +848,36 @@ def export_excel(results: list, output_path: str):
             date_results, key=lambda r: (0 if r.is_own else 1, r.min_price or 999999)
         )
 
+        ci_str, co_str = date_key.split(" → ")
+        nights = (datetime.strptime(co_str, "%Y-%m-%d") - datetime.strptime(ci_str, "%Y-%m-%d")).days or 1
+
         for prop in sorted_r:
             is_own = prop.is_own
             prop_bg = "D5E8D4" if is_own else "FFFFFF"
             prop_fg = "1E4620" if is_own else "000000"
             name_str = f"{'★ ' if is_own else ''}{prop.display_name or prop.name}"
 
+            # Build clickable URL with checkin/checkout dates
+            base_url = re.sub(r'\.[a-z]{2}(-[a-z]{2})?\.html', '.html', prop.url.split('?')[0])
+            prop_link = (f"{base_url}?checkin={prop.checkin}&checkout={prop.checkout}"
+                         f"&group_adults={prop.adults}&no_rooms=1&selected_currency={CURRENCY}")
+
+            prop_start = row
+
             if not prop.offers:
                 for ci, val in enumerate(
-                    [
-                        name_str,
-                        f"— {prop.error or 'нет данных'}",
-                        "",
-                        "",
-                        "",
-                        "",
-                        "",
-                        "",
-                    ],
-                    1,
+                    [name_str, f"— {prop.error or 'нет данных'}", "", "", "", "", "", "", ""], 1
                 ):
                     c = ws.cell(row=row, column=ci, value=val)
                     c.fill = fill("FFF2CC")
                     c.font = fnt(italic=True, color="AA6600", size=9)
                     c.alignment = aln(h="left" if ci <= 2 else "center")
-                    c.border = bdr()
+                    if ci == 1:
+                        c.hyperlink = prop_link
+                        c.font = fnt(italic=True, color="AA6600", size=9, underline="single")
                 ws.row_dimensions[row].height = 17
                 row += 1
+                apply_prop_border(ws, prop_start, row - 1, N)
                 continue
 
             offers_s = sorted(prop.offers, key=lambda o: o.price_night or 999999)
@@ -829,10 +886,17 @@ def export_excel(results: list, output_path: str):
                 bg = prop_bg if is_first else ("EAF4EA" if is_own else "F7FBFF")
 
                 vs_str, vs_color = "", "000000"
-                if ref and offer.price_night and not is_own:
-                    diff = (offer.price_night - ref) / ref
-                    vs_str = f"{diff:+.1%}"
-                    vs_color = "1A7A34" if diff > 0 else "C0392B"
+                if offer.price_night and not is_own:
+                    if offer.refundable is True:
+                        cmp_ref = ref_refundable or ref
+                    elif offer.refundable is False:
+                        cmp_ref = ref_non_refundable or ref
+                    else:
+                        cmp_ref = ref
+                    if cmp_ref:
+                        diff = (offer.price_night - cmp_ref) / cmp_ref
+                        vs_str = f"{diff:+.1%}"
+                        vs_color = "1A7A34" if diff > 0 else "C0392B"
 
                 if offer.refundable is True:
                     cancel_text = offer.cancellation or "Free cancellation"
@@ -846,48 +910,55 @@ def export_excel(results: list, output_path: str):
                     ref_str, ref_color = offer.cancellation[:55] or "—", "555555"
 
                 disc_str = f"-{offer.discount_pct:.0f}%" if offer.discount_pct else ""
+                adr = round(offer.price_final / nights) if offer.price_final else None
 
                 row_vals = [
-                    name_str if is_first else "",
-                    offer.room_type or "—",
-                    offer.guests,
-                    offer.price_final,
-                    (
-                        offer.price_original
-                        if offer.price_original != offer.price_final
-                        else None
-                    ),
-                    disc_str,
-                    ref_str,
-                    vs_str,
+                    name_str if is_first else "",   # 1
+                    offer.room_type or "—",          # 2
+                    offer.guests,                    # 3
+                    offer.price_final,               # 4  Цена
+                    adr,                             # 5  ADR
+                    (offer.price_original if offer.price_original != offer.price_final else None),  # 6
+                    disc_str,                        # 7
+                    ref_str,                         # 8
+                    vs_str,                          # 9
                 ]
                 for ci, val in enumerate(row_vals, 1):
                     c = ws.cell(row=row, column=ci, value=val)
                     c.fill = fill(bg)
                     c.border = bdr()
-                    c.alignment = aln(h="left" if ci in (1, 2, 7) else "center")
+                    c.alignment = aln(h="left" if ci in (1, 2, 8) else "center")
                     if ci == 1:
-                        c.font = fnt(bold=is_first and is_own, color=prop_fg, size=9)
+                        if is_first:
+                            c.hyperlink = prop_link
+                            c.font = fnt(bold=is_own, color="0563C1", size=9, underline="single")
+                        else:
+                            c.font = fnt(color=prop_fg, size=9)
                     elif ci == 4:
                         c.font = fnt(bold=True, color=prop_fg, size=9)
                         c.number_format = '#,##0 "฿"'
                     elif ci == 5 and val:
+                        c.font = fnt(bold=False, color="2E4057", size=9)
+                        c.number_format = '#,##0 "฿"'
+                    elif ci == 6 and val:
                         c.font = fnt(color="999999", size=9, italic=True)
                         c.number_format = '#,##0 "฿"'
-                    elif ci == 6:
-                        c.font = fnt(bold=True, color="E74C3C", size=9)
                     elif ci == 7:
-                        c.font = fnt(color=ref_color, size=9)
+                        c.font = fnt(bold=True, color="E74C3C", size=9)
                     elif ci == 8:
+                        c.font = fnt(color=ref_color, size=9)
+                    elif ci == 9:
                         c.font = fnt(bold=True, color=vs_color, size=9)
                     else:
                         c.font = fnt(color=prop_fg, size=9)
                 ws.row_dimensions[row].height = 17
                 row += 1
 
+            apply_prop_border(ws, prop_start, row - 1, N)
+
         row += 2
 
-    widths = [28, 30, 7, 13, 14, 9, 42, 12]
+    widths = [28, 30, 7, 13, 11, 14, 9, 42, 12]
     for ci, w in enumerate(widths, 1):
         ws.column_dimensions[get_column_letter(ci)].width = w
 
@@ -1005,46 +1076,37 @@ async def run(
     workers=2,
 ):
 
-    all_jobs = []
-    for checkin, checkout in date_pairs:
+    def build_jobs(checkin, checkout):
+        jobs = []
         for key in prop_keys:
             prop = PROPERTIES[key]
-            # Own property
-            all_jobs.append(
-                {
-                    "url": prop["url"],
-                    "checkin": checkin,
-                    "checkout": checkout,
-                    "adults": adults,
-                    "is_own": True,
-                    "label": prop["label"],
-                }
-            )
-            # Competitors for this property
+            jobs.append({"url": prop["url"], "checkin": checkin, "checkout": checkout,
+                         "adults": adults, "is_own": True, "label": prop["label"]})
             for comp in prop["competitors"]:
-                all_jobs.append(
-                    {
-                        "url": comp["url"],
-                        "checkin": checkin,
-                        "checkout": checkout,
-                        "adults": adults,
-                        "is_own": False,
-                        "label": comp.get("label", ""),
-                    }
-                )
+                jobs.append({"url": comp["url"], "checkin": checkin, "checkout": checkout,
+                             "adults": adults, "is_own": False, "label": comp.get("label", "")})
+        return jobs
 
-    log.info(f"Всего задач: {len(all_jobs)} | Воркеров: {workers}")
+    total_jobs = sum(len(build_jobs(ci, co)) for ci, co in date_pairs)
+    log.info(f"Всего задач: {total_jobs} | Воркеров: {workers}")
 
+    all_results = []
     async with async_playwright() as pw:
         sem = asyncio.Semaphore(workers)
-        results = await scrape_batch(pw, all_jobs, headless=headless, sem=sem)
+        for checkin, checkout in date_pairs:
+            log.info(f"\n{'─'*60}")
+            log.info(f"📅  Период: {checkin} → {checkout}")
+            log.info(f"{'─'*60}")
+            jobs = build_jobs(checkin, checkout)
+            batch = await scrape_batch(pw, jobs, headless=headless, sem=sem)
+            all_results.extend(batch)
 
-    export_excel(results, output)
+    export_excel(all_results, output)
 
     print("\n" + "=" * 85)
     print(f"{'Дата':<13} {'Объект':<30} {'Тарифов':>7}  {'Цена/ночь (финал)':>20}")
     print("=" * 85)
-    for r in results:
+    for r in all_results:
         mark = " ★" if r.is_own else ""
         name = (r.display_name or r.name)[:30] + mark
         if not r.offers:
@@ -1154,14 +1216,14 @@ def main():
     p.add_argument("--dates-file", help="Файл с датами (YYYY-MM-DD YYYY-MM-DD)")
     p.add_argument("--output", default="booking_analysis.xlsx")
     p.add_argument(
-        "--workers", type=int, default=2, help="Параллельных браузеров (макс 3)"
+        "--workers", type=int, default=4, help="Параллельных браузеров (макс 8, default 4)"
     )
     p.add_argument("--visible", action="store_true", help="Показать браузер")
     args = p.parse_args()
 
-    if args.workers > 3:
-        args.workers = 3
-        print("⚠  Снижено до 3 воркеров")
+    if args.workers > 8:
+        args.workers = 8
+        print("⚠  Снижено до 8 воркеров")
 
     prop_keys = list(PROPERTIES.keys()) if args.property == "all" else [args.property]
     pairs = build_date_pairs(args)
