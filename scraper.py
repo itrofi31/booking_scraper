@@ -716,6 +716,13 @@ async def scrape_property(
             )
         else:
             log.warning(f"    ⚠ Нет тарифов: {result.display_name or result.name}")
+            for i, raw in enumerate(offers_raw):
+                log.debug(
+                    f"      raw[{i}]: room={raw.get('room_type','?')!r} "
+                    f"orig={raw.get('orig_text','')!r} final={raw.get('final_text','')!r} "
+                    f"all_prices={[(x['val'], x['isStruck']) for x in raw.get('all_prices',[])]} "
+                    f"block_html={raw.get('block_html','')[:80]!r}"
+                )
             result.error = "no_offers"
 
         return result
@@ -917,8 +924,7 @@ def export_excel(results: list, output_path: str):
                     ref_str = f"✓ {cancel_text[:55]}"
                     ref_color = "1A7A34"
                 elif offer.refundable is False:
-                    cancel_text = offer.cancellation or "Non-refundable"
-                    ref_str = f"✗ {cancel_text[:55]}"
+                    ref_str = "✗ Non-refundable"
                     ref_color = "C0392B"
                 else:
                     ref_str, ref_color = offer.cancellation[:55] or "—", "555555"
@@ -1104,6 +1110,9 @@ async def run(
     total_jobs = sum(len(build_jobs(ci, co)) for ci, co in date_pairs)
     log.info(f"Всего задач: {total_jobs} | Воркеров: {workers}")
 
+    MAX_RETRIES = 2
+    RETRY_ERRORS = {"no_offers", "no_room_table", "timeout"}
+
     all_results = []
     async with async_playwright() as pw:
         sem = asyncio.Semaphore(workers)
@@ -1113,6 +1122,25 @@ async def run(
             log.info(f"{'─'*60}")
             jobs = build_jobs(checkin, checkout)
             batch = await scrape_batch(pw, jobs, headless=headless, sem=sem)
+
+            # Retry failed jobs (no_offers / no_room_table / timeout), max MAX_RETRIES times
+            for attempt in range(1, MAX_RETRIES + 1):
+                failed_jobs = [
+                    j for j, r in zip(jobs, batch)
+                    if r.error in RETRY_ERRORS
+                ]
+                if not failed_jobs:
+                    break
+                log.info(f"  ↻ Повтор {attempt}/{MAX_RETRIES}: {len(failed_jobs)} объектов "
+                         f"({', '.join(j['label'] or j['url'][34:55] for j in failed_jobs)})")
+                await asyncio.sleep(2.0 * attempt)
+                retried = await scrape_batch(pw, failed_jobs, headless=headless, sem=sem)
+                # Replace failed results with retried ones
+                retry_map = {(r.url, r.checkin): r for r in retried}
+                batch = [
+                    retry_map.get((r.url, r.checkin), r) for r in batch
+                ]
+
             all_results.extend(batch)
 
     export_excel(all_results, output)
@@ -1136,7 +1164,7 @@ async def run(
             if o.refundable is True:
                 ref_s = f"✓ {o.cancellation or 'Free cancellation'}"
             elif o.refundable is False:
-                ref_s = f"✗ {o.cancellation or 'Non-refundable'}"
+                ref_s = "✗ Non-refundable"
             else:
                 ref_s = o.cancellation[:50] if o.cancellation else "—"
             guests_s = f"{o.guests}чел " if o.guests else ""
