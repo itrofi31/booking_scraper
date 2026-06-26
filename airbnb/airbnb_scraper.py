@@ -557,6 +557,26 @@ def _parse_page_data(sidebar: str, breakdown: str, nights: int) -> dict:
 # ═════════════════════════════════════════════════════════════════════════════
 #  SCRAPE ONE LISTING
 # ═════════════════════════════════════════════════════════════════════════════
+_RESTRICTION_RE = re.compile(
+    r"Minimum stay is \d+\s*nights?"
+    r"|Minimum stay:\s*\d+\s*nights?"
+    r"|Those dates are not available"
+    r"|These dates aren.t available"
+    r"|Not available for your dates"
+    r"|Минимальный срок пребывания[^\n\r]*"
+    r"|Минимальный срок\s*[:—\-]\s*\d+[^\n\r]*"
+    r"|Эти дни недоступны[^\n\r]*"
+    r"|Недоступно для выбранных дат[^\n\r]*",
+    re.IGNORECASE,
+)
+
+
+def _sidebar_restriction(sidebar: str) -> str:
+    """Extract human-readable restriction/unavailability message from sidebar text."""
+    m = _RESTRICTION_RE.search(sidebar)
+    return m.group(0).strip() if m else ""
+
+
 async def scrape_listing(
     page: Page,
     url: str,
@@ -586,7 +606,7 @@ async def scrape_listing(
 
     try:
         log.info(f"  → {label or listing_id}")
-        await page.goto(full_url, wait_until="domcontentloaded", timeout=40000)
+        await page.goto(full_url, wait_until="domcontentloaded", timeout=60000)
         await asyncio.sleep(PAGE_LOAD_WAIT)
         await dismiss_popups(page)
 
@@ -664,7 +684,7 @@ async def scrape_listing(
                 if "Execution context was destroyed" in str(e) and _attempt < 2:
                     log.warning(f"    ↻ context destroyed, retry…")
                     await page.goto(
-                        full_url, wait_until="domcontentloaded", timeout=35000
+                        full_url, wait_until="domcontentloaded", timeout=60000
                     )
                     await asyncio.sleep(PAGE_LOAD_WAIT + 1.0)
                     await dismiss_popups(page)
@@ -683,14 +703,17 @@ async def scrape_listing(
                     raise
 
         # Availability / special-state checks (none of these benefit from retry)
+        # First try to extract human-readable message directly from sidebar text
+        sidebar_text = page_data.get("sidebar", "")
+        restriction = _sidebar_restriction(sidebar_text)
+        if restriction:
+            log.info(f"    ℹ {restriction}: {label or listing_id}")
+            result.error = restriction
+            return result
+        # Fallback to JS-detected flags for cases not covered by sidebar patterns
         if page_data.get("unavailable"):
             log.info(f"    ℹ Недоступно: {label or listing_id}")
             result.error = "not_available"
-            return result
-        if page_data.get("min_stay"):
-            min_n = page_data["min_stay"]
-            log.info(f"    ℹ Мин. срок {min_n} ночей: {label or listing_id}")
-            result.error = f"min_stay_{min_n}"
             return result
         if page_data.get("request_only"):
             log.info(f"    ℹ Только запрос: {label or listing_id}")
