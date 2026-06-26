@@ -1,0 +1,37 @@
+{
+  "_comment": "Airbnb URLs — заменить XXXXXXXX на реальные ID листингов",
+  "default_dates": [
+    {"checkin": "2026-08-01", "checkout": "2026-08-08"},
+    {"checkin": "2026-09-01", "checkout": "2026-09-08"},
+    {"checkin": "2026-10-01", "checkout": "2026-10-08"},
+    {"checkin": "2026-11-01", "checkout": "2026-11-08"},
+    {"checkin": "2026-12-01", "checkout": "2026-12-08"}
+  ],
+
+  "ozone": {
+    "label": "Ozone 1BR",
+    "own_urls": [
+      {"label": "Modern 1BR Apartment in Ozone Bangtao, Phuket", "url": "https://www.airbnb.com/rooms/1704307770135147942"},
+      {"label": "Stylish 1BR Apartment in Ozone Bangtao, Phuket", "url": "https://www.airbnb.com/rooms/1704886523100155728"}
+    ],
+    "competitors": [
+      {"label": "Laguna apartment", "url": "https://www.airbnb.com/rooms/1635215375387805690"},
+      {"label": "One-Bedroom Apartment in Ozone Condominium 513", "url": "https://www.airbnb.com/rooms/1484722588067807345"},
+      {"label": "Stylish 1BR Garden View at The Ozone Bangtao", "url": "https://www.airbnb.com/rooms/1605564539738183052"},
+      {"label": "Spacious 1-BR at The Ozone Phuket BangTao Beach", "url": "https://www.airbnb.com/rooms/1484718854306347792"},
+      {"label": "The Ozone Scarlet Grey | Golf View Bangtao", "url": "https://www.airbnb.com/rooms/1500740684603894101"},
+      {"label": "The Ozone Residences 1 bedroom 5", "url": "https://www.airbnb.com/rooms/1563096115524869951"},
+      {"label": "Ozon – Brand-New Apartment in Laguna Bang Tao", "url": "https://www.airbnb.com/rooms/1630511058800560429"},
+      {"label": "The Ozone Residences 1 bedroom 134", "url": "https://www.airbnb.com/rooms/1577856088277068389"},
+      {"label": "Ozone Sky View Residence BangTao", "url": "https://www.airbnb.com/rooms/1517353471194931560"}
+    ]
+  },
+
+  "cassia": {
+    "label": "Cassia 2BR",
+    "url": "https://www.airbnb.com/rooms/XXXXXXXX",
+    "competitors": [
+      {"label": "Конкурент 1 — название", "url": "https://www.airbnb.com/rooms/YYYYYYYY"}
+    ]
+  }
+}

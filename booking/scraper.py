@@ -32,12 +32,13 @@ except ImportError:
     print("pip install openpyxl")
 
 # ── Logging ───────────────────────────────────────────────────────────────────
+_HERE = Path(__file__).parent
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s  %(levelname)s  %(message)s",
     handlers=[
         logging.StreamHandler(),
-        logging.FileHandler("scraper.log", encoding="utf-8"),
+        logging.FileHandler(_HERE / "scraper.log", encoding="utf-8"),
     ],
 )
 log = logging.getLogger(__name__)
@@ -415,13 +416,34 @@ async def scrape_property(
                 continue
 
         if not table_found:
-            log.warning(f"    ⚠ No room table: {result.name}")
+            # Try to extract a human-readable reason from the page
             try:
-                safe = re.sub(r"[^\w]", "_", result.name or "unk")[:20]
-                # await page.screenshot(path=f"debug_{safe}.png")
+                page_msg = await page.evaluate(r"""
+                () => {
+                    var body = (document.body.innerText || '');
+                    var patterns = [
+                        /Эти дни недоступны/i,
+                        /These dates aren[’'t]+\s*available/i,
+                        /Минимальный срок пребывания[^\n\r]*/i,
+                        /Minimum (?:length of )?stay[^\n\r]*/i,
+                        /not available for your selected dates/i,
+                        /unavailable/i,
+                    ];
+                    for (var i = 0; i < patterns.length; i++) {
+                        var m = body.match(patterns[i]);
+                        if (m) return m[0].replace(/\s+/g, ' ').trim();
+                    }
+                    return '';
+                }
+                """)
             except Exception:
-                pass
-            result.error = "no_room_table"
+                page_msg = ""
+            if page_msg:
+                log.warning(f"    ⚠ {page_msg}: {result.name}")
+                result.error = page_msg[:80]
+            else:
+                log.warning(f"    ⚠ No room table: {result.name}")
+                result.error = "no_room_table"
             return result
 
         # Scroll to TOP of room table so all rows stay in viewport
@@ -1185,7 +1207,7 @@ async def run(
     total_jobs = sum(len(build_jobs(ci, co)) for ci, co in date_pairs)
     log.info(f"Всего задач: {total_jobs} | Воркеров: {workers}")
 
-    MAX_RETRIES = 2
+    MAX_RETRIES = 1
     RETRY_ERRORS = {"no_offers", "no_room_table", "timeout", "context_destroyed"}
 
     all_results = []
@@ -1367,7 +1389,9 @@ def main():
     # Auto-generate filename: property + datetime (if user didn't override --output)
     if "booking_analysis_" in args.output:
         prop_part = args.property if args.property != "all" else "all"
-        args.output = f"booking_{prop_part}_{ts}.xlsx"
+        out_dir = _HERE / "output"
+        out_dir.mkdir(exist_ok=True)
+        args.output = str(out_dir / f"booking_{prop_part}_{ts}.xlsx")
 
     print(f"Объекты: {[PROPERTIES[k]['label'] for k in prop_keys]}")
     print(f"Дат: {len(pairs)}  Воркеров: {args.workers}")
