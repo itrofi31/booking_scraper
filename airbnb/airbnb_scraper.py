@@ -107,6 +107,7 @@ class ListingResult:
     checkin: str = ""
     checkout: str = ""
     adults: int = 2
+    rooms_info: str = ""  # e.g. "4br/4bd/4ba"
     offer: Optional[ListingOffer] = None  # одна цена на листинг
     is_own: bool = False
     error: str = (
@@ -280,6 +281,36 @@ PAGE_DATA_JS = r"""
         if (/\d+(\.\d+)?\s*(out of 5|stars?)/i.test(a)) ratingText = a;
     });
 
+    // ── Bedrooms / beds / baths ────────────────────────────────────────────
+    var bedroomsText = '';
+    (function() {
+        // Look for text block near h1 that contains bedroom/bed/bath counts.
+        // Airbnb renders them as a run of spans/li separated by "·".
+        // We scan all elements for one containing all three numbers.
+        var patterns = [
+            // EN
+            { beds: /(\d+)\s*bed(?:room)?s?/i, baths: /(\d+)\s*bath/i },
+            // RU
+            { beds: /(\d+)\s*спальн/i, baths: /(\d+)\s*ванн/i },
+            // TH
+            { beds: /(\d+)\s*ห้องนอน/i, baths: /(\d+)\s*ห้องน้ำ/i },
+        ];
+        var candidates = document.querySelectorAll('li, span, div, ol');
+        for (var i = 0; i < candidates.length; i++) {
+            var t = (candidates[i].innerText || '').trim();
+            if (t.length > 200) continue;
+            for (var p = 0; p < patterns.length; p++) {
+                var pat = patterns[p];
+                var mBed = t.match(pat.beds);
+                var mBath = t.match(pat.baths);
+                if (mBed && mBath) {
+                    bedroomsText = t;
+                    return;
+                }
+            }
+        }
+    })();
+
     // ── Availability + special states ─────────────────────────────────────
     var bodyText = (document.body.innerText || '').toLowerCase();
     var unavailPhrases = [
@@ -315,13 +346,14 @@ PAGE_DATA_JS = r"""
     var requestOnly = hasRequest && !hasReserve;
 
     return {
-        sidebar:      sidebarText.substring(0, 1200),
-        breakdown:    breakdownText.substring(0, 1200),
-        title:        title.substring(0, 150),
-        rating_text:  ratingText.substring(0, 80),
-        unavailable:  unavailable,
-        min_stay:     minStay,
-        request_only: requestOnly,
+        sidebar:       sidebarText.substring(0, 1200),
+        breakdown:     breakdownText.substring(0, 1200),
+        title:         title.substring(0, 150),
+        rating_text:   ratingText.substring(0, 80),
+        bedrooms_text: bedroomsText.substring(0, 200),
+        unavailable:   unavailable,
+        min_stay:      minStay,
+        request_only:  requestOnly,
     };
 }
 """
@@ -740,6 +772,22 @@ async def scrape_listing(
             title.split("·")[0].strip() or (await page.title()).split("|")[0].strip()
         )
 
+        # Extract bedroom/bed/bath counts into rooms_info
+        bedrooms_text = page_data.get("bedrooms_text", "") or ""
+        if bedrooms_text:
+            m_bed = re.search(r"(\d+)\s*(?:bedroom|спальн|ห้องนอน)", bedrooms_text, re.I)
+            m_bds = re.search(r"(\d+)\s*(?:bed(?!room)|кроват|เตียง)", bedrooms_text, re.I)
+            m_bath = re.search(r"(\d+)\s*(?:bath|ванн|ห้องน้ำ)", bedrooms_text, re.I)
+            parts = []
+            if m_bed:
+                parts.append(f"{m_bed.group(1)}br")
+            if m_bds:
+                parts.append(f"{m_bds.group(1)}bd")
+            if m_bath:
+                parts.append(f"{m_bath.group(1)}ba")
+            if parts:
+                result.rooms_info = "/".join(parts)
+
         # Rating from aria-label: "4.8 out of 5 stars, 42 reviews"
         rating_text = page_data.get("rating_text", "")
         if rating_text:
@@ -885,6 +933,7 @@ def export_excel(results: list, output_path: str):
 
     COLS = [
         "Объект",
+        "Комнаты",
         "Гостей",
         "Цена ฿",
         "ADR ฿",
@@ -955,7 +1004,7 @@ def export_excel(results: list, output_path: str):
             prop_start = row
 
             if not prop.offer:
-                err_vals = [name_str, prop.adults, f"— {prop.error or 'нет данных'}"] + [""] * (N - 3)
+                err_vals = [name_str, prop.rooms_info, prop.adults, f"— {prop.error or 'нет данных'}"] + [""] * (N - 4)
                 for ci2, val in enumerate(err_vals, 1):
                     c = ws.cell(row=row, column=ci2)
                     if ci2 == 1:
@@ -999,46 +1048,49 @@ def export_excel(results: list, output_path: str):
             )
 
             row_vals = [
-                name_str,       # 1 Объект
-                prop.adults,    # 2 Гостей
-                o.price_total,  # 3 Цена ฿
-                adr,            # 4 ADR ฿
-                pre_discount,   # 5 До скидки ฿
-                disc_str,       # 6 Скидка %
-                o.cleaning_fee, # 7 Fees ฿
-                cancel_str,     # 8 Возвратность
-                vs_str,         # 9 vs Мой мин %
+                name_str,           # 1 Объект
+                prop.rooms_info,    # 2 Комнаты
+                prop.adults,        # 3 Гостей
+                o.price_total,      # 4 Цена ฿
+                adr,                # 5 ADR ฿
+                pre_discount,       # 6 До скидки ฿
+                disc_str,           # 7 Скидка %
+                o.cleaning_fee,     # 8 Fees ฿
+                cancel_str,         # 9 Возвратность
+                vs_str,             # 10 vs Мой мин %
             ]
 
             for ci2, val in enumerate(row_vals, 1):
                 c = ws.cell(row=row, column=ci2, value=val)
                 c.fill = fill(prop_bg)
                 c.border = bdr()
-                c.alignment = aln(h="left" if ci2 in (1, 8) else "center")
+                c.alignment = aln(h="left" if ci2 in (1, 9) else "center")
 
                 if ci2 == 1:
                     c.value = name_str
                     c.hyperlink = prop_link
                     c.font = fnt(bold=is_own, color="0563C1", size=9, underline="single")
                 elif ci2 == 2:
+                    c.font = fnt(color="555555", size=9, italic=True)
+                elif ci2 == 3:
                     c.font = fnt(color=prop_fg, size=9)
-                elif ci2 == 3 and val:
+                elif ci2 == 4 and val:
                     c.font = fnt(bold=True, color=prop_fg, size=9)
                     c.number_format = '#,##0 "฿"'
-                elif ci2 == 4 and val:
+                elif ci2 == 5 and val:
                     c.font = fnt(color="2E4057", size=9)
                     c.number_format = '#,##0 "฿"'
-                elif ci2 == 5 and val:
+                elif ci2 == 6 and val:
                     c.font = fnt(color="999999", size=9, italic=True)
                     c.number_format = '#,##0 "฿"'
-                elif ci2 == 6:
+                elif ci2 == 7:
                     c.font = fnt(bold=True, color="E74C3C", size=9)
-                elif ci2 == 7 and val:
+                elif ci2 == 8 and val:
                     c.font = fnt(color="666666", size=9, italic=True)
                     c.number_format = '#,##0 "฿"'
-                elif ci2 == 8:
-                    c.font = fnt(color=cancel_color, size=9)
                 elif ci2 == 9:
+                    c.font = fnt(color=cancel_color, size=9)
+                elif ci2 == 10:
                     c.font = fnt(bold=True, color=vs_color, size=9)
                 else:
                     c.font = fnt(color=prop_fg, size=9)
@@ -1049,8 +1101,8 @@ def export_excel(results: list, output_path: str):
 
         row += 2
 
-    # Объект | Гостей | Цена ฿ | ADR ฿ | До скидки ฿ | Скидка % | Fees ฿ | Возвратность | vs Мой мин %
-    widths = [30, 8, 12, 10, 13, 9, 10, 45, 12]
+    # Объект | Комнаты | Гостей | Цена ฿ | ADR ฿ | До скидки ฿ | Скидка % | Fees ฿ | Возвратность | vs Мой мин %
+    widths = [30, 10, 8, 12, 10, 13, 9, 10, 45, 12]
     for ci2, w in enumerate(widths, 1):
         ws.column_dimensions[get_column_letter(ci2)].width = w
 
