@@ -1,11 +1,19 @@
 {
   "_comment": "Даты по умолчанию — используются если не указаны в аргументах и не введены вручную",
   "default_dates": [
-    {"checkin": "2026-08-01", "checkout": "2026-08-08"},
-    {"checkin": "2026-09-01", "checkout": "2026-09-08"},
-    {"checkin": "2026-10-01", "checkout": "2026-10-08"},
-    {"checkin": "2026-11-01", "checkout": "2026-11-08"},
-    {"checkin": "2026-12-01", "checkout": "2026-12-08"}
+    {"checkin": "2026-08-05", "checkout": "2026-08-16"},
+    {"checkin": "2026-09-05", "checkout": "2026-09-16"},
+    {"checkin": "2026-10-05", "checkout": "2026-10-16"},
+    {"checkin": "2026-11-05", "checkout": "2026-11-11"},
+    {"checkin": "2026-12-05", "checkout": "2026-12-16"},
+    {"checkin": "2026-12-20", "checkout": "2027-01-05"},
+    {"checkin": "2027-01-05", "checkout": "2027-01-16"},
+    {"checkin": "2027-02-05", "checkout": "2027-02-16"},
+    {"checkin": "2027-03-05", "checkout": "2027-03-16"},
+    {"checkin": "2027-04-05", "checkout": "2027-04-16"},
+    {"checkin": "2027-05-05", "checkout": "2027-05-16"},
+    {"checkin": "2027-06-05", "checkout": "2027-06-16"},
+    {"checkin": "2027-07-05", "checkout": "2027-07-16"}
   ],
 
   "ozone": {
@@ -55,6 +63,29 @@
     ],
 		"_comment": "https://www.booking.com/searchresults.en-gb.html?latitude=8.00549571&longitude=98.30462434&checkin=2026-08-05&checkout=2026-08-16&group_adults=2&selected_currency=THB&nflt=ht_id%3D201"
   },
+  "ozone2BR": {
+    "label": "Ozone 2BR",
+    "url": "https://www.booking.com/hotel/th/ozone-bangtao-residence-by-metrika-phuket.html",
+    "competitors": [
+      {
+        "label": "Ozone Сondo Apart Hotel by TropicLook",
+        "url": "https://www.booking.com/hotel/th/ozone-sondo-apart-by-tropiclook.ru.html"
+      },
+      {
+        "label": "Ozone Laguna - 2 BR Condo",
+        "url": "https://www.booking.com/hotel/th/ozone-laguna-2-br-condo.ru.html"
+      },
+      {
+        "label": "Ozone condominium Bang Tao by My Home Phuket",
+        "url": "https://www.booking.com/hotel/th/ozone-condominium-bang-tao-by-my-home-phuket.ru.html"
+      },
+      {
+        "label": "Suite Melos 2BR Pool Gym Access Ozone",
+        "url": "https://www.booking.com/hotel/th/suite-melos-2br-pool-gym-access-ozone.ru.html"
+      }
+    ],
+		"_comment": "https://www.booking.com/searchresults.en-gb.html?aid=304142&label=gen173nr-10CAQoggI49ANICVgEaKkBiAEBmAEzuAEHyAEN2AED6AEB-AEBiAIBqAIBuALQm4fTBsACAdICJDdjNDM4ZTg5LTE2YjItNDVlNi1iYWRjLTY0NzE1ODRkZDE2Y9gCAeACAQ&latitude=8.00549571&longitude=98.30462434&checkin=2026-08-05&checkout=2026-08-16&group_adults=2&selected_currency=THB&nflt=ht_id%3D201%3Bentire_place_bedroom_count%3D2"
+  },
   "cassia": {
     "label": "Cassia 2BR",
     "url": "https://www.booking.com/hotel/th/cassia-residence-apartments.html",
@@ -89,5 +120,39 @@
       }
 		],
 		"_comment":"https://www.booking.com/searchresults.html?latitude=7.999197&longitude=98.297165&checkin=2026-08-05&checkout=2026-08-16&group_adults=2&selected_currency=THB&nflt=ht_id%3D201&radius=0.2"
-  }
+  },
+	"oxygen": {
+		"label" : "Cozy 3-Bedroom Pool Villa at Oxygen Bang Tao by Metrika",
+		"url" : "https://www.booking.com/hotel/th/cozy-3-bedroom-pool-villa-at-oxygen-bang-tao-by-metrika.ru.html",
+		"competitors": [
+			{
+			"label": "Tropical retreat-pool villa at Oxygen Bangtao",
+			"url" : "https://www.booking.com/hotel/th/pool-villa-at-oxygen-bangtao-by-lofty.html"
+		}, 
+		{
+			"label": "White Lotus by Oxygen at Bang Tao Beach",
+			"url" : "https://www.booking.com/hotel/th/oxygen-villa-c1-by-villacarte.html"
+		},
+		{
+			"label": "Villa 3 Bedrooms with private pool at Oxygen Bangtao",
+			"url" : "https://www.booking.com/hotel/th/three-bedroom-oxygen-bang-tao-by-brown-starling.ru.html"
+		},
+		{
+			"label": "3BR Villa with Private Pool in Bang Tao",
+			"url" : "https://www.booking.com/hotel/th/peaceful-pool-villa-bangtao.ru.html"
+		},
+		{
+			"label": "Private pool villa in the heart of Bangtao",
+			"url" : "https://www.booking.com/hotel/th/private-pool-villa-in-the-heart-on-bangtao.ru.html"
+		},
+		{
+			"label": "3 BR Pool Villa Oxygen 271-26 near Bangtao beach",
+			"url" : "https://www.booking.com/hotel/th/oxygen-271-26.html"
+			},
+		{
+			"label": "Two Villas HOLIDAY - Oxygen Style Bangtao Beach, Phuket",
+			"url" : "https://www.booking.com/hotel/th/two-villas-holiday-oxygen-bang-tao-beach.ru.html"
+		}],
+			"comment": "https://www.booking.com/searchresults.html?aid=304142&label=gen173nr-10CAQoggI49ANIM1gEaKkBiAEBmAEzuAEHyAEN2AED6AEB-AEBiAIBqAIBuALEu7fSBsACAdICJDRmMTYxY2ExLTFmNmQtNDEzOS04MjgwLWUxYmViNDNkZTE1MNgCAeACAQ&latitude=7.985328&longitude=98.296049&checkin=2026-09-14&checkout=2026-09-26&group_adults=6&selected_currency=THB&radius=0.2&nflt=ht_id%3D213"
+		}
 }

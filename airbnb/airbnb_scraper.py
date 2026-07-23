@@ -1186,6 +1186,90 @@ def export_excel(results: list, output_path: str):
     for ci2, w in enumerate([14, 32, 12, 10, 13, 9, 12], 1):
         ws2.column_dimensions[get_column_letter(ci2)].width = w
 
+    # ── Sheet 3: Отчёт ADR ────────────────────────────────────────────────
+    ws3 = wb.create_sheet("Отчёт ADR")
+    ws3.sheet_view.showGridLines = False
+
+    # Collect per-date ADR from own-property results only
+    adr_by_date: dict[str, dict] = {}
+    for date_key, date_results in by_date.items():
+        ci_str = date_key.split(" → ")[0]
+        adrs = []
+        for prop in date_results:
+            if prop.is_own or not prop.offer or not prop.offer.price_total:
+                continue
+            prop_nights = (
+                datetime.strptime(prop.checkout, "%Y-%m-%d")
+                - datetime.strptime(prop.checkin, "%Y-%m-%d")
+            ).days or 1
+            adrs.append(prop.offer.price_total / prop_nights)
+        if adrs:
+            adr_by_date[ci_str] = {
+                "avg": round(sum(adrs) / len(adrs)),
+                "min": round(min(adrs)),
+            }
+
+    # Title
+    ws3.merge_cells("A1:C1")
+    title_cell = ws3.cell(row=1, column=1, value="Отчёт ADR — Конкуренты (Airbnb)")
+    title_cell.font = XFont(name="Arial", bold=True, color="FFFFFF", size=13)
+    title_cell.fill = PatternFill("solid", fgColor="1F3864")
+    title_cell.alignment = Alignment(horizontal="center", vertical="center")
+    ws3.row_dimensions[1].height = 32
+
+    # Column headers
+    rpt_headers = ["Дата заезда", "Средний ADR, ฿", "Мин ADR, ฿"]
+    for ci, h in enumerate(rpt_headers, 1):
+        c = ws3.cell(row=2, column=ci, value=h)
+        c.font = XFont(name="Arial", bold=True, color="FFFFFF", size=10)
+        c.fill = PatternFill("solid", fgColor="2E75B6")
+        c.alignment = Alignment(horizontal="center", vertical="center")
+        c.border = Border(
+            top=Side(style="medium", color="1F3864"),
+            bottom=Side(style="medium", color="1F3864"),
+            left=Side(style="medium", color="1F3864"),
+            right=Side(style="medium", color="1F3864"),
+        )
+    ws3.row_dimensions[2].height = 22
+    ws3.freeze_panes = "A3"
+
+    # Data rows
+    _thin_b = Side(style="thin", color="BDD7EE")
+    _med_b = Side(style="medium", color="2E75B6")
+
+    for rpt_row, (date_str, vals) in enumerate(adr_by_date.items(), 3):
+        bg = "FFFFFF" if rpt_row % 2 == 0 else "EBF3FB"
+        row_data = [date_str, vals["avg"], vals["min"]]
+        for ci, val in enumerate(row_data, 1):
+            c = ws3.cell(row=rpt_row, column=ci, value=val)
+            c.fill = PatternFill("solid", fgColor=bg)
+            c.alignment = Alignment(horizontal="center", vertical="center")
+            if ci == 1:
+                c.font = XFont(name="Arial", bold=False, color="000000", size=10)
+            elif ci == 2:
+                c.font = XFont(name="Arial", bold=True, color="1F3864", size=11)
+                c.number_format = '#,##0'
+            else:
+                c.font = XFont(name="Arial", bold=False, color="2E75B6", size=11)
+                c.number_format = '#,##0'
+        ws3.row_dimensions[rpt_row].height = 20
+
+    # Outer border around data block
+    last_rpt_row = 2 + len(adr_by_date)
+    for r in range(2, last_rpt_row + 1):
+        for ci in range(1, 4):
+            c = ws3.cell(row=r, column=ci)
+            c.border = Border(
+                top=Side(style="medium", color="2E75B6") if r == 2 else _thin_b,
+                bottom=Side(style="medium", color="2E75B6") if r == last_rpt_row else _thin_b,
+                left=Side(style="medium", color="2E75B6") if ci == 1 else _thin_b,
+                right=Side(style="medium", color="2E75B6") if ci == 3 else _thin_b,
+            )
+
+    ws3.column_dimensions["A"].width = 16
+    ws3.column_dimensions["B"].width = 18
+    ws3.column_dimensions["C"].width = 16
+
     wb.save(output_path)
     log.info(f"✓ Сохранено: {output_path}")
 

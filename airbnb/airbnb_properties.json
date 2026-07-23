@@ -1,18 +1,24 @@
 {
-  "_comment": "Airbnb URLs — заменить XXXXXXXX на реальные ID листингов",
   "default_dates": [
-    {"checkin": "2026-08-01", "checkout": "2026-08-08"},
-    {"checkin": "2026-09-01", "checkout": "2026-09-08"},
-    {"checkin": "2026-10-01", "checkout": "2026-10-08"},
-    {"checkin": "2026-11-01", "checkout": "2026-11-08"},
-    {"checkin": "2026-12-01", "checkout": "2026-12-08"}
+		{"checkin": "2026-08-05", "checkout": "2026-08-16"},
+    {"checkin": "2026-09-05", "checkout": "2026-09-16"},
+    {"checkin": "2026-10-05", "checkout": "2026-10-16"},
+    {"checkin": "2026-11-05", "checkout": "2026-11-11"},
+    {"checkin": "2026-12-05", "checkout": "2026-12-16"},
+    {"checkin": "2026-12-20", "checkout": "2027-01-05"},
+    {"checkin": "2027-01-05", "checkout": "2027-01-16"},
+    {"checkin": "2027-02-05", "checkout": "2027-02-16"},
+    {"checkin": "2027-03-05", "checkout": "2027-03-16"},
+    {"checkin": "2027-04-05", "checkout": "2027-04-16"},
+    {"checkin": "2027-05-05", "checkout": "2027-05-16"},
+    {"checkin": "2027-06-05", "checkout": "2027-06-16"},
+    {"checkin": "2027-07-05", "checkout": "2027-07-16"}
   ],
 
   "ozone": {
     "label": "Ozone 1BR",
     "own_urls": [
-      {"label": "Modern 1BR Apartment in Ozone Bangtao, Phuket", "url": "https://www.airbnb.com/rooms/1704307770135147942"},
-      {"label": "Stylish 1BR Apartment in Ozone Bangtao, Phuket", "url": "https://www.airbnb.com/rooms/1704886523100155728"}
+      {"label": "Modern 1BR Apartment in Ozone Bangtao, Phuket", "url": "https://www.airbnb.com/rooms/1704307770135147942"}
     ],
     "competitors": [
       {"label": "Laguna apartment", "url": "https://www.airbnb.com/rooms/1635215375387805690"},
@@ -26,6 +32,28 @@
       {"label": "Ozone Sky View Residence BangTao", "url": "https://www.airbnb.com/rooms/1517353471194931560"}
     ]
   },
+  "ozone2BR": {
+    "label": "Ozone 2BR",
+    "own_urls": [
+      {"label": "Modern 1BR Apartment in Ozone Bangtao, Phuket", "url": "https://www.airbnb.com/rooms/1704307770135147942"}
+    ],
+    "competitors": [
+      {"label": "2BR apartments golf view", "url": "https://www.airbnb.ru/rooms/1645560268636796339"
+			},
+      {"label": "2BR apartments", "url": "https://www.airbnb.ru/rooms/1648005522541252208?adults=4&check_in=2026-08-05&check_out=2026-08-16&search_mode=regular_search&source_impression_id=p3_1784800148_P3Fg58mGfrdBcnJG&previous_page_section_name=1000&federated_search_id=c738ba8f-a6c8-4325-a563-a5dceffee9c1"
+			},
+      {"label": "Suite Anafi 2BR | Pool & Gym Access | Ozone", "url": "https://www.airbnb.ru/rooms/1610220609715934453?"
+			},
+      {"label": "Suite Salina 2BR | Pool & Gym Access | Ozone", "url": "https://www.airbnb.ru/rooms/1586381273766771507"
+			},
+      {"label": "Modern 2BR Condo | Pool & Lifestyle", "url": "https://www.airbnb.ru/rooms/1713616443002569813"
+			},
+      {"label": "Ozone Condo Laguna | 82 SQM | Pool & Gym Access", "url": "https://www.airbnb.ru/rooms/1717222472451983486"
+			},
+      {"label": "Suite Melos 2BR | Pool & Gym Access | Ozone", "url": "https://www.airbnb.ru/rooms/1574582959810533160"
+			}
+    ]
+  },
 
   "cassia": {
     "label": "Cassia 2BR",
@@ -33,5 +61,32 @@
     "competitors": [
       {"label": "Конкурент 1 — название", "url": "https://www.airbnb.com/rooms/YYYYYYYY"}
     ]
-  }
+  },
+
+	"oxygen": {
+		"label" : "Cozy 3-Bedroom Pool Villa at Oxygen Bang Tao by Metrika",
+		"url" : "",
+		"competitors": [
+			{
+			"label": "Частная вилла в Oxygen Bangtao — бассейн, сад, барбекю",
+			"url" : "https://airbnb.com/rooms/1562317436812240431"
+		}, 
+		{
+			"label": "Тропический отдых — вилла с бассейном в Oxygen Bangtao",
+			"url" : "https://airbnb.com/rooms/1556584791770204931"
+		},
+		{
+			"label": "Просторная вилла на Бангтао с частным бассейном и садом",
+			"url" : "https://airbnb.com/rooms/19353057"
+		},
+		{
+			"label": "Вилла Oxygen (в нескольких минутах ходьбы от пляжа Банг-Тао)",
+			"url" : "https://airbnb.com/rooms/1558739219657213563"
+		},
+		{
+			"label": "Вилла с частным бассейном в центре Бангтао",
+			"url" : "https://ru.airbnb.com/rooms/1520205870818098553"
+		}
+	]
+	}
 }
