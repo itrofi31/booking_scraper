@@ -809,6 +809,19 @@ async def scrape_batch(
 # ═════════════════════════════════════════════════════════════════════════════
 #  EXCEL EXPORT
 # ═════════════════════════════════════════════════════════════════════════════
+def _fmt_date(s: str) -> str:
+    """YYYY-MM-DD → ДД/ММ/ГГ"""
+    try:
+        return datetime.strptime(s, "%Y-%m-%d").strftime("%d/%m/%y")
+    except ValueError:
+        return s
+
+def _fmt_date_key(key: str) -> str:
+    """'2026-08-05 → 2026-08-12' → '05/08/26 → 12/08/26'"""
+    parts = key.split(" → ")
+    return " → ".join(_fmt_date(p) for p in parts)
+
+
 def export_excel(results: list, output_path: str):
     if not EXCEL_OK:
         _csv(results, output_path.replace(".xlsx", ".csv"))
@@ -892,7 +905,7 @@ def export_excel(results: list, output_path: str):
     for date_key, date_results in by_date.items():
         # Date header — bold separator, no repeated column headers
         ws.merge_cells(f"A{row}:{get_column_letter(N)}{row}")
-        c = ws.cell(row=row, column=1, value=f"📅  {date_key}")
+        c = ws.cell(row=row, column=1, value=f"📅  {_fmt_date_key(date_key)}")
         c.font = fnt(bold=True, color="FFFFFF", size=11)
         c.fill = fill("1F3864")
         c.alignment = aln(h="left")
@@ -1099,7 +1112,7 @@ def export_excel(results: list, output_path: str):
                 vs_color = "1A7A34" if diff > 0 else "C0392B"
             with_disc = sum(1 for o in prop.offers if o.discount_pct)
             row_data = [
-                prop.checkin,
+                _fmt_date(prop.checkin),
                 f"{'★ ' if is_own else ''}{prop.display_name or prop.name}",
                 prop.min_price,
                 prop.max_price,
@@ -1185,7 +1198,8 @@ def export_excel(results: list, output_path: str):
 
     for rpt_row, (date_str, vals) in enumerate(adr_by_date.items(), 3):
         bg = "FFFFFF" if rpt_row % 2 == 0 else "EBF3FB"
-        row_data = [date_str, vals["avg"], vals["min"]]
+        fmt_date = datetime.strptime(date_str, "%Y-%m-%d").strftime("%d/%m/%y")
+        row_data = [fmt_date, vals["avg"], vals["min"]]
         for ci, val in enumerate(row_data, 1):
             c = ws3.cell(row=rpt_row, column=ci, value=val)
             c.fill = PatternFill("solid", fgColor=bg)
