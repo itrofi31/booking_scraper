@@ -1280,6 +1280,7 @@ def export_excel(results: list, output_path: str):
     wb.calculation.fullCalcOnLoad = True
     wb.save(output_path)
     log.info(f"✓ Сохранено: {output_path}")
+    import subprocess; subprocess.Popen(["open", output_path])
 
 
 def _csv(results, path):
