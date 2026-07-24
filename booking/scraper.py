@@ -106,6 +106,7 @@ class PropertyResult:
     adults: int = 2
     offers: list = field(default_factory=list)
     is_own: bool = False
+    adr_room_filter: list = field(default_factory=list)  # keywords for ADR report filtering
     error: str = ""
     scrape_ts: str = field(
         default_factory=lambda: datetime.now().isoformat(timespec="seconds")
@@ -601,6 +602,7 @@ async def scrape_property(
 
             // Modern rows
             var rows = document.querySelectorAll('[data-testid="availability-table-row"]');
+            var lastRoomName = '';
             rows.forEach(function(row, idx) {
                 var nameEl = row.querySelector(
                     '[data-testid="roomtype-name"], .hprt-roomtype-name, [class*="roomtype"]');
@@ -609,8 +611,11 @@ async def scrape_property(
                 // Try cancel from row first, fallback to page-level collection by index
                 var cancel = getCancel(row);
                 if (!cancel && idx < pageCancels.length) cancel = pageCancels[idx];
+                var roomName = nameEl ? (nameEl.innerText || nameEl.textContent || '').trim() : '';
+                if (roomName) lastRoomName = roomName;
+                else roomName = lastRoomName;
                 results.push({
-                    room_type:  nameEl ? (nameEl.innerText || nameEl.textContent || '').trim() : '',
+                    room_type:  roomName,
                     size_m2:    getSize(row),
                     cancel:     cancel,
                     refundable: classifyCancel(cancel),
@@ -626,6 +631,7 @@ async def scrape_property(
             // Legacy table fallback
             if (results.length === 0) {
                 var legIdx = 0;
+                var lastLegRoomName = '';
                 document.querySelectorAll('#hprt-table tr, .hprt-table tr').forEach(function(row) {
                     var nameEl = row.querySelector('.hprt-roomtype-name, .jq_tooltip');
                     var p = getPrice(row);
@@ -633,8 +639,11 @@ async def scrape_property(
                     var cancelEl = row.querySelector('[data-testid="cancellation-policy"], [data-testid="policy-title"], .e2e-cancellation, .hprt-conditions li');
                     var cancel = cancelEl ? htmlToText(cancelEl).substring(0, 120) : '';
                     if (!cancel && legIdx < pageCancels.length) cancel = pageCancels[legIdx];
+                    var legRoomName = nameEl ? (nameEl.innerText || nameEl.textContent || '').trim() : '';
+                    if (legRoomName) lastLegRoomName = legRoomName;
+                    else legRoomName = lastLegRoomName || 'Room';
                     results.push({
-                        room_type:  nameEl ? (nameEl.innerText || nameEl.textContent || '').trim() : 'Room',
+                        room_type:  legRoomName,
                         cancel:     cancel,
                         refundable: classifyCancel(cancel),
                         breakfast:  false,
@@ -734,7 +743,7 @@ async def scrape_property(
 
             result.offers.append(
                 RoomOffer(
-                    room_type=raw.get("room_type", "") or "Room",
+                    room_type=raw.get("room_type", "") or "—",
                     price_original=price_orig,
                     price_final=price_final,
                     discount_pct=disc_pct,
@@ -791,7 +800,7 @@ async def scrape_batch(
             page = await ctx.new_page()
             try:
                 await asyncio.sleep(random.uniform(0.3, 1.2))
-                return await scrape_property(
+                result = await scrape_property(
                     page,
                     job["url"],
                     job["checkin"],
@@ -800,6 +809,8 @@ async def scrape_batch(
                     job.get("is_own", False),
                     job.get("label", ""),
                 )
+                result.adr_room_filter = job.get("adr_room_filter", [])
+                return result
             finally:
                 await ctx.close()
 
@@ -937,6 +948,7 @@ def export_excel(results: list, output_path: str):
             datetime.strptime(co_str, "%Y-%m-%d")
             - datetime.strptime(ci_str, "%Y-%m-%d")
         ).days or 1
+        row_date_str = _fmt_date(ci_str)
 
         for prop in sorted_r:
             is_own = prop.is_own
@@ -979,15 +991,33 @@ def export_excel(results: list, output_path: str):
                         c.font = fnt(
                             italic=True, color="AA6600", size=9, underline="single"
                         )
+                ws.cell(row=row, column=N + 1).value = row_date_str
+                ws.cell(row=row, column=N + 2).value = 0 if is_own else 1
                 ws.row_dimensions[row].height = 17
                 row += 1
                 apply_prop_border(ws, prop_start, row - 1, N)
                 continue
 
-            offers_s = sorted(prop.offers, key=lambda o: o.price_night or 999999)
+            offers_s = sorted(
+                prop.offers,
+                key=lambda o: (o.room_type or "", o.price_night or 999999),
+            )
+            room_type_starts = []  # rows where a new room type begins (for separator)
+            prev_room_type = None
+            room_type_group = 0
             for oi, offer in enumerate(offers_s):
                 is_first = oi == 0
-                bg = prop_bg if is_first else ("EAF4EA" if is_own else "F7FBFF")
+                cur_rt = offer.room_type or ""
+                if not is_first and cur_rt != prev_room_type:
+                    room_type_group += 1
+                    room_type_starts.append(row)
+                prev_room_type = cur_rt
+                if is_first:
+                    bg = prop_bg
+                elif is_own:
+                    bg = "D5E8D4" if room_type_group % 2 == 0 else "EAF4EA"
+                else:
+                    bg = "FFFFFF" if room_type_group % 2 == 0 else "EBF3FB"
 
                 vs_str, vs_color = "", "000000"
                 if offer.price_night and not is_own:
@@ -1065,6 +1095,8 @@ def export_excel(results: list, output_path: str):
                         c.font = fnt(bold=True, color=vs_color, size=9)
                     else:
                         c.font = fnt(color=prop_fg, size=9)
+                ws.cell(row=row, column=N + 1).value = row_date_str
+                ws.cell(row=row, column=N + 2).value = 0 if is_own else 1
                 ws.row_dimensions[row].height = 17
                 row += 1
 
@@ -1072,9 +1104,16 @@ def export_excel(results: list, output_path: str):
 
         row += 2
 
+    last_data_row = row - 1  # last written row in sheet 1
+
     widths = [28, 30, 7, 13, 11, 14, 9, 42, 12]
     for ci, w in enumerate(widths, 1):
         ws.column_dimensions[get_column_letter(ci)].width = w
+    # Hide helper columns
+    _date_col_letter = get_column_letter(N + 1)
+    _comp_col_letter = get_column_letter(N + 2)
+    ws.column_dimensions[_date_col_letter].hidden = True
+    ws.column_dimensions[_comp_col_letter].hidden = True
 
     # ── Sheet 2: Сводка ───────────────────────────────────────────────────
     ws2 = wb.create_sheet("Сводка")
@@ -1137,35 +1176,37 @@ def export_excel(results: list, output_path: str):
     for ci, w in enumerate([14, 30, 12, 12, 9, 10, 12], 1):
         ws2.column_dimensions[get_column_letter(ci)].width = w
 
-    # ── Sheet 3: Отчёт ADR ────────────────────────────────────────────────
+    # ── Sheet 3: Отчёт ADR (формульный — пересчитывается при правке листа 1) ─
     ws3 = wb.create_sheet("Отчёт ADR")
     ws3.sheet_view.showGridLines = False
 
-    # Collect per-date ADR from own-property offers only
-    adr_by_date: dict[str, dict] = {}
-    for date_key, date_results in by_date.items():
-        ci_str = date_key.split(" → ")[0]
-        co_str = date_key.split(" → ")[1]
-        d_nights = (
-            datetime.strptime(co_str, "%Y-%m-%d")
-            - datetime.strptime(ci_str, "%Y-%m-%d")
-        ).days or 1
-        adrs = []
-        for prop in date_results:
-            if prop.is_own:
+    _r2 = last_data_row
+    adr_col_ref  = f"'Все тарифы'!$E$2:$E${_r2}"
+    date_col_ref = f"'Все тарифы'!${_date_col_letter}$2:${_date_col_letter}${_r2}"
+    comp_col_ref = f"'Все тарифы'!${_comp_col_letter}$2:${_comp_col_letter}${_r2}"
+
+    unique_dates = list(dict.fromkeys(
+        _fmt_date(dk.split(" → ")[0]) for dk in by_date.keys()
+    ))
+
+    # Compute min competitor ADR per date in Python (Excel MINIFS unreliable on Mac LTSC)
+    min_adr_by_date: dict[str, float] = {}
+    for dk, props in by_date.items():
+        checkin_str, checkout_str = dk.split(" → ")
+        checkin_fmt = _fmt_date(checkin_str)
+        try:
+            nights = (datetime.strptime(checkout_str, "%Y-%m-%d") - datetime.strptime(checkin_str, "%Y-%m-%d")).days or 1
+        except Exception:
+            nights = 1
+        for prop in props:
+            if prop.is_own or not prop.offers:
                 continue
-            prop_nights = (
-                datetime.strptime(prop.checkout, "%Y-%m-%d")
-                - datetime.strptime(prop.checkin, "%Y-%m-%d")
-            ).days or d_nights
             for offer in prop.offers:
-                if offer.price_final:
-                    adrs.append(offer.price_final / prop_nights)
-        if adrs:
-            adr_by_date[ci_str] = {
-                "avg": round(sum(adrs) / len(adrs)),
-                "min": round(min(adrs)),
-            }
+                pn = offer.price_night
+                if pn and pn > 0:
+                    adr = pn / nights
+                    if checkin_fmt not in min_adr_by_date or adr < min_adr_by_date[checkin_fmt]:
+                        min_adr_by_date[checkin_fmt] = adr
 
     # Title
     ws3.merge_cells("A1:C1")
@@ -1191,32 +1232,36 @@ def export_excel(results: list, output_path: str):
     ws3.row_dimensions[2].height = 22
     ws3.freeze_panes = "A3"
 
-    # Data rows
     _thin_b = Side(style="thin", color="BDD7EE")
-    _med_b = Side(style="medium", color="2E75B6")
-    _cell_bdr = Border(top=_thin_b, bottom=_thin_b, left=_thin_b, right=_thin_b)
+    _med_b  = Side(style="medium", color="2E75B6")
 
-    for rpt_row, (date_str, vals) in enumerate(adr_by_date.items(), 3):
+    for rpt_row, date_str in enumerate(unique_dates, 3):
         bg = "FFFFFF" if rpt_row % 2 == 0 else "EBF3FB"
-        fmt_date = datetime.strptime(date_str, "%Y-%m-%d").strftime("%d/%m/%y")
-        row_data = [fmt_date, vals["avg"], vals["min"]]
-        for ci, val in enumerate(row_data, 1):
-            c = ws3.cell(row=rpt_row, column=ci, value=val)
-            c.fill = PatternFill("solid", fgColor=bg)
-            c.border = _cell_bdr
-            c.alignment = Alignment(horizontal="center", vertical="center")
-            if ci == 1:
-                c.font = XFont(name="Arial", bold=False, color="000000", size=10)
-            elif ci == 2:
-                c.font = XFont(name="Arial", bold=True, color="1F3864", size=11)
-                c.number_format = '#,##0'
-            else:
-                c.font = XFont(name="Arial", bold=False, color="2E75B6", size=11)
-                c.number_format = '#,##0'
+
+        c_date = ws3.cell(row=rpt_row, column=1, value=date_str)
+        c_date.fill = PatternFill("solid", fgColor=bg)
+        c_date.alignment = Alignment(horizontal="center", vertical="center")
+        c_date.font = XFont(name="Arial", bold=False, color="000000", size=10)
+
+        avg_formula = (
+            f"=IFERROR(AVERAGEIFS({adr_col_ref},{date_col_ref},A{rpt_row},{comp_col_ref},1),\"\")"
+        )
+        c_avg = ws3.cell(row=rpt_row, column=2, value=avg_formula)
+        c_avg.fill = PatternFill("solid", fgColor=bg)
+        c_avg.alignment = Alignment(horizontal="center", vertical="center")
+        c_avg.font = XFont(name="Arial", bold=True, color="1F3864", size=11)
+        c_avg.number_format = '#,##0'
+
+        min_val = min_adr_by_date.get(date_str)
+        c_min = ws3.cell(row=rpt_row, column=3, value=round(min_val) if min_val is not None else "")
+        c_min.fill = PatternFill("solid", fgColor=bg)
+        c_min.alignment = Alignment(horizontal="center", vertical="center")
+        c_min.font = XFont(name="Arial", bold=False, color="2E75B6", size=11)
+        c_min.number_format = '#,##0'
+
         ws3.row_dimensions[rpt_row].height = 20
 
-    # Outer border around data block
-    last_rpt_row = 2 + len(adr_by_date)
+    last_rpt_row = 2 + len(unique_dates)
     for r in range(2, last_rpt_row + 1):
         for ci in range(1, 4):
             c = ws3.cell(row=r, column=ci)
@@ -1231,6 +1276,8 @@ def export_excel(results: list, output_path: str):
     ws3.column_dimensions["B"].width = 18
     ws3.column_dimensions["C"].width = 16
 
+    wb.calculation.calcMode = "auto"
+    wb.calculation.fullCalcOnLoad = True
     wb.save(output_path)
     log.info(f"✓ Сохранено: {output_path}")
 
@@ -1288,6 +1335,7 @@ async def run(
         jobs = []
         for key in prop_keys:
             prop = PROPERTIES[key]
+            room_filter = prop.get("adr_room_filter", [])
             jobs.append(
                 {
                     "url": prop["url"],
@@ -1296,6 +1344,7 @@ async def run(
                     "adults": adults,
                     "is_own": True,
                     "label": prop["label"],
+                    "adr_room_filter": room_filter,
                 }
             )
             for comp in prop["competitors"]:
@@ -1307,6 +1356,7 @@ async def run(
                         "adults": adults,
                         "is_own": False,
                         "label": comp.get("label", ""),
+                        "adr_room_filter": room_filter,
                     }
                 )
         return jobs

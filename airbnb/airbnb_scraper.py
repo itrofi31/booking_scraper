@@ -1000,6 +1000,8 @@ def export_excel(results: list, output_path: str):
             ),
         )
 
+        row_date_str = _fmt_date(ci_str)
+
         for prop in sorted_r:
             is_own = prop.is_own
             prop_bg = "D5E8D4" if is_own else "FFFFFF"
@@ -1029,6 +1031,8 @@ def export_excel(results: list, output_path: str):
                         c.font = fnt(italic=True, color="AA6600", size=9)
                     c.fill = fill("FFF2CC")
                     c.alignment = aln(h="left" if ci2 == 1 else "center")
+                ws.cell(row=row, column=N + 1).value = row_date_str
+                ws.cell(row=row, column=N + 2).value = 0 if is_own else 1
                 ws.row_dimensions[row].height = 17
                 row += 1
                 apply_prop_border(ws, prop_start, row - 1, N)
@@ -1108,16 +1112,25 @@ def export_excel(results: list, output_path: str):
                 else:
                     c.font = fnt(color=prop_fg, size=9)
 
+            ws.cell(row=row, column=N + 1).value = row_date_str
+            ws.cell(row=row, column=N + 2).value = 0 if is_own else 1
             ws.row_dimensions[row].height = 17
             row += 1
             apply_prop_border(ws, prop_start, row - 1, N)
 
         row += 2
 
+    last_data_row = row - 1
+
     # Объект | Комнаты | Гостей | Цена ฿ | ADR ฿ | До скидки ฿ | Скидка % | Fees ฿ | Возвратность | vs Мой мин %
     widths = [30, 10, 8, 12, 10, 13, 9, 10, 45, 12]
     for ci2, w in enumerate(widths, 1):
         ws.column_dimensions[get_column_letter(ci2)].width = w
+    # Hide helper columns
+    _date_col_letter = get_column_letter(N + 1)
+    _comp_col_letter = get_column_letter(N + 2)
+    ws.column_dimensions[_date_col_letter].hidden = True
+    ws.column_dimensions[_comp_col_letter].hidden = True
 
     # ── Sheet 2: Сводка ───────────────────────────────────────────────────
     ws2 = wb.create_sheet("Сводка")
@@ -1199,28 +1212,35 @@ def export_excel(results: list, output_path: str):
     for ci2, w in enumerate([14, 32, 12, 10, 13, 9, 12], 1):
         ws2.column_dimensions[get_column_letter(ci2)].width = w
 
-    # ── Sheet 3: Отчёт ADR ────────────────────────────────────────────────
+    # ── Sheet 3: Отчёт ADR (формульный — пересчитывается при правке листа 1) ─
     ws3 = wb.create_sheet("Отчёт ADR")
     ws3.sheet_view.showGridLines = False
 
-    # Collect per-date ADR from own-property results only
-    adr_by_date: dict[str, dict] = {}
-    for date_key, date_results in by_date.items():
-        ci_str = date_key.split(" → ")[0]
-        adrs = []
-        for prop in date_results:
-            if prop.is_own or not prop.offer or not prop.offer.price_total:
+    # Collect unique checkin dates (in display format DD/MM/YY)
+    _r2 = last_data_row
+    adr_col_ref  = f"'Все тарифы'!$E$2:$E${_r2}"
+    date_col_ref = f"'Все тарифы'!${_date_col_letter}$2:${_date_col_letter}${_r2}"
+    comp_col_ref = f"'Все тарифы'!${_comp_col_letter}$2:${_comp_col_letter}${_r2}"
+
+    unique_dates = list(dict.fromkeys(
+        _fmt_date(dk.split(" → ")[0]) for dk in by_date.keys()
+    ))
+
+    # Compute min competitor ADR per date in Python (Excel MINIFS unreliable on Mac LTSC)
+    min_adr_by_date: dict[str, float] = {}
+    for dk, listings in by_date.items():
+        checkin_str, checkout_str = dk.split(" → ")
+        checkin_fmt = _fmt_date(checkin_str)
+        try:
+            nights = (datetime.strptime(checkout_str, "%Y-%m-%d") - datetime.strptime(checkin_str, "%Y-%m-%d")).days or 1
+        except Exception:
+            nights = 1
+        for listing in listings:
+            if listing.is_own or not listing.offer or not listing.offer.price_total:
                 continue
-            prop_nights = (
-                datetime.strptime(prop.checkout, "%Y-%m-%d")
-                - datetime.strptime(prop.checkin, "%Y-%m-%d")
-            ).days or 1
-            adrs.append(prop.offer.price_total / prop_nights)
-        if adrs:
-            adr_by_date[ci_str] = {
-                "avg": round(sum(adrs) / len(adrs)),
-                "min": round(min(adrs)),
-            }
+            adr = listing.offer.price_total / nights
+            if checkin_fmt not in min_adr_by_date or adr < min_adr_by_date[checkin_fmt]:
+                min_adr_by_date[checkin_fmt] = adr
 
     # Title
     ws3.merge_cells("A1:C1")
@@ -1246,30 +1266,38 @@ def export_excel(results: list, output_path: str):
     ws3.row_dimensions[2].height = 22
     ws3.freeze_panes = "A3"
 
-    # Data rows
     _thin_b = Side(style="thin", color="BDD7EE")
-    _med_b = Side(style="medium", color="2E75B6")
 
-    for rpt_row, (date_str, vals) in enumerate(adr_by_date.items(), 3):
+    for rpt_row, date_str in enumerate(unique_dates, 3):
         bg = "FFFFFF" if rpt_row % 2 == 0 else "EBF3FB"
-        fmt_date = datetime.strptime(date_str, "%Y-%m-%d").strftime("%d/%m/%y")
-        row_data = [fmt_date, vals["avg"], vals["min"]]
-        for ci, val in enumerate(row_data, 1):
-            c = ws3.cell(row=rpt_row, column=ci, value=val)
-            c.fill = PatternFill("solid", fgColor=bg)
-            c.alignment = Alignment(horizontal="center", vertical="center")
-            if ci == 1:
-                c.font = XFont(name="Arial", bold=False, color="000000", size=10)
-            elif ci == 2:
-                c.font = XFont(name="Arial", bold=True, color="1F3864", size=11)
-                c.number_format = '#,##0'
-            else:
-                c.font = XFont(name="Arial", bold=False, color="2E75B6", size=11)
-                c.number_format = '#,##0'
+
+        # Date cell (plain value — used as criteria in formulas below)
+        c_date = ws3.cell(row=rpt_row, column=1, value=date_str)
+        c_date.fill = PatternFill("solid", fgColor=bg)
+        c_date.alignment = Alignment(horizontal="center", vertical="center")
+        c_date.font = XFont(name="Arial", bold=False, color="000000", size=10)
+
+        # Average ADR formula
+        avg_formula = (
+            f"=IFERROR(AVERAGEIFS({adr_col_ref},{date_col_ref},A{rpt_row},{comp_col_ref},1),\"\")"
+        )
+        c_avg = ws3.cell(row=rpt_row, column=2, value=avg_formula)
+        c_avg.fill = PatternFill("solid", fgColor=bg)
+        c_avg.alignment = Alignment(horizontal="center", vertical="center")
+        c_avg.font = XFont(name="Arial", bold=True, color="1F3864", size=11)
+        c_avg.number_format = '#,##0'
+
+        min_val = min_adr_by_date.get(date_str)
+        c_min = ws3.cell(row=rpt_row, column=3, value=round(min_val) if min_val is not None else "")
+        c_min.fill = PatternFill("solid", fgColor=bg)
+        c_min.alignment = Alignment(horizontal="center", vertical="center")
+        c_min.font = XFont(name="Arial", bold=False, color="2E75B6", size=11)
+        c_min.number_format = '#,##0'
+
         ws3.row_dimensions[rpt_row].height = 20
 
-    # Outer border around data block
-    last_rpt_row = 2 + len(adr_by_date)
+    # Border
+    last_rpt_row = 2 + len(unique_dates)
     for r in range(2, last_rpt_row + 1):
         for ci in range(1, 4):
             c = ws3.cell(row=r, column=ci)
@@ -1284,6 +1312,8 @@ def export_excel(results: list, output_path: str):
     ws3.column_dimensions["B"].width = 18
     ws3.column_dimensions["C"].width = 16
 
+    wb.calculation.calcMode = "auto"
+    wb.calculation.fullCalcOnLoad = True
     wb.save(output_path)
     log.info(f"✓ Сохранено: {output_path}")
 
