@@ -1,7 +1,7 @@
 """
 Booking.com Competitor Price Scraper
 Ozone & Cassia Residences — Laguna Phuket
-v4: manual competitor lists per property · discounted price · parallel workers
+v5: fixed price-parsing regex bug, scoped price selectors, lang=en-gb forced, richer debug logging
 
 Usage:
     python3.12 scraper.py                                    # all properties, default dates
@@ -106,8 +106,18 @@ class PropertyResult:
     adults: int = 2
     offers: list = field(default_factory=list)
     is_own: bool = False
-    adr_room_filter: list = field(default_factory=list)  # keywords for ADR report filtering
+    adr_room_filter: list = field(
+        default_factory=list
+    )  # keywords for ADR report filtering
     error: str = ""
+    # Fallback when the exact requested dates are unavailable but Booking suggests
+    # nearby alternative dates with a price — used ONLY to give a rough ADR reference,
+    # always rendered separately and clearly marked as NOT matching the requested dates.
+    alt_checkin: str = ""
+    alt_checkout: str = ""
+    alt_nights: Optional[int] = None
+    alt_price: Optional[float] = None
+    alt_url: str = ""
     scrape_ts: str = field(
         default_factory=lambda: datetime.now().isoformat(timespec="seconds")
     )
@@ -308,12 +318,78 @@ async def set_dates(page: Page, checkin: str, checkout: str, adults: int) -> boo
     base = re.sub(r"\.[a-z]{2}(-[a-z]{2})?\.html", ".html", page.url.split("?")[0])
     url = (
         f"{base}?checkin={checkin}&checkout={checkout}"
-        f"&group_adults={adults}&no_rooms=1&selected_currency={CURRENCY}"
+        f"&group_adults={adults}&no_rooms=1&selected_currency={CURRENCY}&lang=en-gb"
     )
     await page.goto(url, wait_until="domcontentloaded", timeout=30000)
     await asyncio.sleep(PAGE_LOAD_WAIT)
     await dismiss_all(page)
     return True
+
+
+# ═════════════════════════════════════════════════════════════════════════════
+#  ALT-DATE FALLBACK — когда точных дат нет, но Booking предлагает соседние
+# ═════════════════════════════════════════════════════════════════════════════
+async def find_alt_dates(page: Page) -> list[dict]:
+    """
+    Когда на запрошенные даты номеров нет, Booking иногда сам показывает блок
+    "Другие даты" с набором ссылок (checkin/checkout в href) и ценой рядом
+    ("От THB ..."). Достаём все такие варианты — используются ТОЛЬКО как грубый
+    ориентир по ADR, никогда не подменяют собой основной поиск.
+    """
+    try:
+        cands = await page.evaluate(r"""
+        () => {
+            var out = [];
+            var seen = {};
+            document.querySelectorAll('a[href*="checkin="]').forEach(function(a) {
+                var href = a.getAttribute('href') || a.href || '';
+                var mIn = href.match(/checkin=(\d{4}-\d{2}-\d{2})/);
+                var mOut = href.match(/checkout=(\d{4}-\d{2}-\d{2})/);
+                if (!mIn || !mOut) return;
+                var key = mIn[1] + '_' + mOut[1];
+                if (!seen[key]) seen[key] = { checkin: mIn[1], checkout: mOut[1], texts: [] };
+                var t = (a.innerText || a.textContent || '').trim();
+                if (t) seen[key].texts.push(t);
+            });
+            Object.keys(seen).forEach(function(k) {
+                var g = seen[k];
+                var priceText = g.texts.find(function(t) {
+                    return /(THB|฿)/i.test(t) && /\d{3,}/.test(t);
+                });
+                if (!priceText) return;
+                var n = parseFloat(priceText.replace(/[^0-9.]/g, ''));
+                if (!(n >= 100)) return;
+                out.push({checkin: g.checkin, checkout: g.checkout, price: n});
+            });
+            return out;
+        }
+        """)
+        return cands or []
+    except Exception:
+        return []
+
+
+def _pick_best_alt(cands: list[dict], checkin: str, checkout: str) -> Optional[dict]:
+    """Из найденных альт-дат выбирает ближайшую к запрошенному периоду —
+    сперва по близости даты заезда, затем по близости числа ночей."""
+    if not cands:
+        return None
+    try:
+        req_ci = datetime.strptime(checkin, "%Y-%m-%d")
+        req_nights = (datetime.strptime(checkout, "%Y-%m-%d") - req_ci).days or 1
+    except ValueError:
+        return None
+
+    def score(c):
+        try:
+            ci = datetime.strptime(c["checkin"], "%Y-%m-%d")
+            co = datetime.strptime(c["checkout"], "%Y-%m-%d")
+        except ValueError:
+            return (999999, 999999)
+        nights = (co - ci).days or 1
+        return (abs((ci - req_ci).days), abs(nights - req_nights))
+
+    return min(cands, key=score)
 
 
 # ═════════════════════════════════════════════════════════════════════════════
@@ -338,9 +414,13 @@ async def scrape_property(
         label=label,
     )
     base = re.sub(r"\.[a-z]{2}(-[a-z]{2})?\.html", ".html", url.split("?")[0])
+    # lang=en-gb — Booking иногда отдаёт RU-локализацию по IP/гео, из-за чего вёрстка
+    # цены получает вкраплённый кириллический текст ("Прежняя цена", "Текущая цена")
+    # и ломает парсинг. Форсируем язык явно, а не полагаемся только на Accept-Language.
     full_url = (
         f"{base}?checkin={checkin}&checkout={checkout}"
-        f"&group_adults={adults}&no_rooms=1&selected_currency={CURRENCY}&sb_price_type=total"
+        f"&group_adults={adults}&no_rooms=1&selected_currency={CURRENCY}"
+        f"&sb_price_type=total&lang=en-gb"
     )
 
     try:
@@ -445,6 +525,27 @@ async def scrape_property(
             else:
                 log.warning(f"    ⚠ No room table: {result.name}")
                 result.error = "no_room_table"
+
+            alt_cands = await find_alt_dates(page)
+            best_alt = _pick_best_alt(alt_cands, checkin, checkout)
+            if best_alt:
+                alt_nights = (
+                    datetime.strptime(best_alt["checkout"], "%Y-%m-%d")
+                    - datetime.strptime(best_alt["checkin"], "%Y-%m-%d")
+                ).days or 1
+                result.alt_checkin = best_alt["checkin"]
+                result.alt_checkout = best_alt["checkout"]
+                result.alt_nights = alt_nights
+                result.alt_price = best_alt["price"]
+                result.alt_url = (
+                    f"{base}?checkin={best_alt['checkin']}&checkout={best_alt['checkout']}"
+                    f"&group_adults={adults}&no_rooms=1&selected_currency={CURRENCY}&lang=en-gb"
+                )
+                log.info(
+                    f"    ℹ [{label}] найдены альт. даты: {best_alt['checkin']} → "
+                    f"{best_alt['checkout']} ({alt_nights} ноч.) = {best_alt['price']}฿ "
+                    f"(это НЕ запрошенные даты — только для ориентира)"
+                )
             return result
 
         # Scroll to TOP of room table so all rows stay in viewport
@@ -476,52 +577,105 @@ async def scrape_property(
         () => {
             var results = [];
 
-            function getPrice(row) {
-                // Priority: discounted price element > struck-through old + new > single price
-                var finalEl = row.querySelector(
-                    '[data-testid="price-and-discounted-price"] [class*="discounted"], ' +
-                    '.prco-valign-middle-helper .bui-price-display__value:last-child, ' +
-                    '[class*="discount"] [class*="price"]:last-child, ' +
-                    '.bui-price-display__value'
-                );
-                var origEl = row.querySelector(
-                    '[class*="strikethrough"], [class*="crossed"], s, del, ' +
-                    '[aria-label*="Original price"], [class*="original-price"], ' +
-                    '.prco-text-nowrap-helper s, .bui-price-display__original'
-                );
+            // Elements belonging to promo/guarantee widgets that are NOT the room price
+            // (e.g. "we'll refund the difference" price-match-guarantee banner) — skip these.
+            function isNoise(el) {
+                var cur = el;
+                var hops = 0;
+                while (cur && hops < 6) {
+                    var testid = (cur.getAttribute && cur.getAttribute('data-testid')) || '';
+                    var cls = cur.className || '';
+                    var blob = (testid + ' ' + (typeof cls === 'string' ? cls : '')).toLowerCase();
+                    if (blob.indexOf('match') !== -1 || blob.indexOf('genius') !== -1 ||
+                        blob.indexOf('guarantee') !== -1 || blob.indexOf('promo') !== -1) {
+                        return true;
+                    }
+                    cur = cur.parentElement;
+                    hops++;
+                }
+                return false;
+            }
 
-                // Get ALL price-like spans in the block
+            function getRoundedTotal(row) {
+                // Booking embeds its own precomputed TOTAL stay price on the row (or a
+                // closest/descendant element) as data-hotel-rounded-price — e.g. "51011".
+                // This is far more reliable than parsing the visible price block, which
+                // mixes per-night, per-stay, tax and even date-looking numbers together.
+                var el = row.hasAttribute('data-hotel-rounded-price')
+                    ? row
+                    : (row.closest('[data-hotel-rounded-price]') || row.querySelector('[data-hotel-rounded-price]'));
+                if (!el) return null;
+                var v = parseFloat(el.getAttribute('data-hotel-rounded-price'));
+                return (v && v >= 100) ? v : null;
+            }
+
+            function getPrice(row) {
+                var roundedTotal = getRoundedTotal(row);
+
+                // Prefer the specific price-and-discounted-price block; fall back to legacy classes.
                 var priceBlock = row.querySelector(
                     '[data-testid="price-and-discounted-price"], ' +
                     '.hprt-price-block, [class*="price-block"]'
                 );
+                var scope = priceBlock || row;
+
+                // Priority: discounted price element > struck-through old + new > single price
+                // Scoped to `scope` (not the whole row) so we don't pick up unrelated widgets.
+                var finalEl = scope.querySelector(
+                    '[class*="discounted"], ' +
+                    '.prco-valign-middle-helper .bui-price-display__value:last-child, ' +
+                    '[class*="discount"] [class*="price"]:last-child, ' +
+                    '.bui-price-display__value'
+                );
+                var origEl = scope.querySelector(
+                    '[class*="strikethrough"], [class*="crossed"], s, del, ' +
+                    '[aria-label*="Original price"], [class*="original-price"], ' +
+                    '.prco-text-nowrap-helper s, .bui-price-display__original'
+                );
+                if (finalEl && isNoise(finalEl)) finalEl = null;
+                if (origEl && isNoise(origEl)) origEl = null;
 
                 var origText  = origEl  ? (origEl.innerText  || origEl.textContent  || '').trim() : '';
                 var finalText = finalEl ? (finalEl.innerText || finalEl.textContent || '').trim() : '';
 
-                // Collect all numeric texts from price block
+                // Collect all numeric leaf-node texts from the price block.
+                // Leaf nodes only (no children) — avoids matching parent text that mixes
+                // localized labels (e.g. "Текущая цена THB 51 011") with the actual number.
+                // Extract via regex SEARCH (not full-string match) so surrounding words
+                // don't break the match — this was the earlier bug (full-match regex
+                // required the whole string to be digits/currency only).
                 var allPrices = [];
+                var seen = {};
                 if (priceBlock) {
                     priceBlock.querySelectorAll('*').forEach(function(el) {
+                        if (el.children.length > 0) return;   // leaf nodes only
+                        if (isNoise(el)) return;               // skip promo/guarantee text
                         var t = (el.innerText || el.textContent || '').trim();
                         if (!t) return;
-                        if (/^[\\d,\\.\\s฿THB]+$/.test(t) && t.replace(/[^0-9]/g,'').length >= 3) {
-                            var n = parseFloat(t.replace(/[^0-9.]/g,'').replace(',',''));
-                            var struck = el.tagName === 'S' || el.tagName === 'DEL';
-                            if (!struck) {
-                                var style = window.getComputedStyle(el);
-                                struck = (style.textDecoration || style.textDecorationLine || '').indexOf('line-through') !== -1;
-                            }
-                            if (n >= 100) allPrices.push({text: t, val: n, isStruck: struck});
+                        var m = t.match(/\d[\d.,\s]{2,}\d|\d{3,}/);
+                        if (!m) return;
+                        var n = parseFloat(m[0].replace(/[^0-9.]/g, '').replace(/\.(?=\d{3}\b)/g, ''));
+                        if (!(n >= 100)) return;
+
+                        var struck = el.tagName === 'S' || el.tagName === 'DEL';
+                        if (!struck) {
+                            var style = window.getComputedStyle(el);
+                            struck = (style.textDecoration || style.textDecorationLine || '').indexOf('line-through') !== -1;
                         }
+                        var key = n + '|' + struck;
+                        if (seen[key]) return;
+                        seen[key] = true;
+                        allPrices.push({text: t, val: n, isStruck: struck});
                     });
                 }
 
                 return {
-                    orig_text:   origText,
-                    final_text:  finalText,
-                    all_prices:  allPrices,
-                    block_html:  priceBlock ? priceBlock.innerHTML : '',
+                    orig_text:     origText,
+                    final_text:    finalText,
+                    all_prices:    allPrices,
+                    rounded_total: roundedTotal,
+                    block_html:    priceBlock ? priceBlock.innerHTML.slice(0, 2000) : '',
+                    row_html:      row.outerHTML.slice(0, 2500),
                 };
             }
 
@@ -624,7 +778,9 @@ async def scrape_property(
                     orig_text:  p.orig_text,
                     final_text: p.final_text,
                     all_prices: p.all_prices,
+                    rounded_total: p.rounded_total,
                     block_html: p.block_html,
+                    row_html:   p.row_html,
                 });
             });
 
@@ -652,7 +808,9 @@ async def scrape_property(
                         orig_text:  p.orig_text,
                         final_text: p.final_text,
                         all_prices: p.all_prices,
+                        rounded_total: p.rounded_total,
                         block_html: p.block_html,
+                        row_html:   p.row_html,
                     });
                     legIdx++;
                 });
@@ -700,6 +858,7 @@ async def scrape_property(
 
             orig_text = raw.get("orig_text", "")
             final_text = raw.get("final_text", "")
+            rounded_total = raw.get("rounded_total")
 
             price_orig = parse_price(orig_text) or (max(struck) if struck else None)
             price_final = parse_price(final_text) or (
@@ -709,6 +868,17 @@ async def scrape_property(
             # If only one price found in all_prices
             if not price_final and not price_orig and all_p:
                 price_final = min(x["val"] for x in all_p)
+
+            # Booking's own precomputed TOTAL stay price (data-hotel-rounded-price) is
+            # far more reliable than anything parsed from visible text — it can't be
+            # confused with per-night, tax, or unrelated numbers. Prefer it whenever
+            # present and plausible; it always wins over the text-derived final price.
+            if rounded_total:
+                price_final = rounded_total
+                # A text-derived original (struck-through) price is still meaningful for
+                # discount%, but only keep it if it's actually higher than the real total.
+                if price_orig and price_orig <= price_final:
+                    price_orig = None
 
             # Sanity: if final > orig, swap
             if price_orig and price_final and price_final > price_orig:
@@ -727,8 +897,9 @@ async def scrape_property(
                 log.warning(
                     f"    ⚠ [{label}] подозрительно низкая цена {price_final}฿ "
                     f"за {nights_count} ночей ({raw.get('room_type','?')}), "
+                    f"rounded_total={raw.get('rounded_total')}, "
                     f"all_prices={[(x['val'], x['isStruck']) for x in all_p]}, "
-                    f"block_html={raw.get('block_html','')[:120]}"
+                    f"row_html={raw.get('row_html','')[:400]}"
                 )
                 continue
 
@@ -771,9 +942,30 @@ async def scrape_property(
                     f"      raw[{i}]: room={raw.get('room_type','?')!r} "
                     f"orig={raw.get('orig_text','')!r} final={raw.get('final_text','')!r} "
                     f"all_prices={[(x['val'], x['isStruck']) for x in raw.get('all_prices',[])]} "
-                    f"block_html={raw.get('block_html','')[:80]!r}"
+                    f"row_html={raw.get('row_html','')[:400]!r}"
                 )
             result.error = "no_offers"
+
+            alt_cands = await find_alt_dates(page)
+            best_alt = _pick_best_alt(alt_cands, checkin, checkout)
+            if best_alt:
+                alt_nights = (
+                    datetime.strptime(best_alt["checkout"], "%Y-%m-%d")
+                    - datetime.strptime(best_alt["checkin"], "%Y-%m-%d")
+                ).days or 1
+                result.alt_checkin = best_alt["checkin"]
+                result.alt_checkout = best_alt["checkout"]
+                result.alt_nights = alt_nights
+                result.alt_price = best_alt["price"]
+                result.alt_url = (
+                    f"{base}?checkin={best_alt['checkin']}&checkout={best_alt['checkout']}"
+                    f"&group_adults={adults}&no_rooms=1&selected_currency={CURRENCY}&lang=en-gb"
+                )
+                log.info(
+                    f"    ℹ [{label}] найдены альт. даты: {best_alt['checkin']} → "
+                    f"{best_alt['checkout']} ({alt_nights} ноч.) = {best_alt['price']}฿ "
+                    f"(это НЕ запрошенные даты — только для ориентира)"
+                )
 
         return result
 
@@ -783,7 +975,11 @@ async def scrape_property(
         return result
     except Exception as e:
         err_str = str(e)
-        result.error = "context_destroyed" if "Execution context was destroyed" in err_str else err_str[:120]
+        result.error = (
+            "context_destroyed"
+            if "Execution context was destroyed" in err_str
+            else err_str[:120]
+        )
         log.error(f"    ✗ Ошибка [{label or url[34:60]}]: {e}")
         return result
 
@@ -826,6 +1022,7 @@ def _fmt_date(s: str) -> str:
         return datetime.strptime(s, "%Y-%m-%d").strftime("%d/%m/%y")
     except ValueError:
         return s
+
 
 def _fmt_date_key(key: str) -> str:
     """'2026-08-05 → 2026-08-12' → '05/08/26 → 12/08/26'"""
@@ -995,6 +1192,46 @@ def export_excel(results: list, output_path: str):
                 ws.cell(row=row, column=N + 2).value = 0 if is_own else 1
                 ws.row_dimensions[row].height = 17
                 row += 1
+
+                if prop.alt_price and prop.alt_checkin:
+                    alt_adr = (
+                        round(prop.alt_price / prop.alt_nights)
+                        if prop.alt_nights
+                        else None
+                    )
+                    alt_label = (
+                        f"⚠ ДРУГИЕ ДАТЫ (не запрошенные!): "
+                        f"{_fmt_date(prop.alt_checkin)}–{_fmt_date(prop.alt_checkout)} "
+                        f"({prop.alt_nights} ноч.) = {prop.alt_price:,.0f}฿".replace(
+                            ",", " "
+                        )
+                        + (
+                            f"  (ADR≈{alt_adr:,.0f}฿)".replace(",", " ")
+                            if alt_adr
+                            else ""
+                        )
+                    )
+                    for ci, val in enumerate(
+                        [name_str, alt_label, "", "", "", "", "", "", ""], 1
+                    ):
+                        c = ws.cell(row=row, column=ci, value=val)
+                        c.fill = fill(
+                            "FDE9D9"
+                        )  # orange tint — clearly not a normal price row
+                        c.font = fnt(
+                            italic=True, bold=(ci == 2), color="B34700", size=9
+                        )
+                        c.alignment = aln(h="left" if ci <= 2 else "center")
+                        if ci == 1:
+                            c.hyperlink = prop.alt_url or prop_link
+                            c.font = fnt(
+                                italic=True, color="B34700", size=9, underline="single"
+                            )
+                    ws.cell(row=row, column=N + 1).value = row_date_str
+                    ws.cell(row=row, column=N + 2).value = 0 if is_own else 1
+                    ws.row_dimensions[row].height = 17
+                    row += 1
+
                 apply_prop_border(ws, prop_start, row - 1, N)
                 continue
 
@@ -1171,6 +1408,38 @@ def export_excel(results: list, output_path: str):
                     c.number_format = '#,##0 "฿"'
             ws2.row_dimensions[srow].height = 17
             srow += 1
+
+            if not prop.offers and prop.alt_price and prop.alt_checkin:
+                alt_adr = (
+                    round(prop.alt_price / prop.alt_nights) if prop.alt_nights else None
+                )
+                row_data2 = [
+                    f"{_fmt_date(prop.alt_checkin)}→{_fmt_date(prop.alt_checkout)}",
+                    f"⚠ {prop.display_name or prop.name} (ДРУГИЕ ДАТЫ!)",
+                    prop.alt_price,
+                    None,
+                    0,
+                    "",
+                    "",
+                ]
+                for ci, val in enumerate(row_data2, 1):
+                    c = ws2.cell(row=srow, column=ci, value=val)
+                    c.fill = fill("FDE9D9")
+                    c.border = bdr()
+                    c.font = fnt(italic=True, color="B34700", size=9)
+                    c.alignment = aln(h="left" if ci == 2 else "center")
+                    if ci == 3 and val:
+                        c.number_format = '#,##0 "฿"'
+                if alt_adr:
+                    note_c = ws2.cell(
+                        row=srow,
+                        column=6,
+                        value=f"ADR≈{alt_adr:,.0f}".replace(",", " "),
+                    )
+                    note_c.font = fnt(italic=True, color="B34700", size=9)
+                    note_c.alignment = aln(h="center")
+                ws2.row_dimensions[srow].height = 17
+                srow += 1
         srow += 1
 
     for ci, w in enumerate([14, 30, 12, 12, 9, 10, 12], 1):
@@ -1181,13 +1450,13 @@ def export_excel(results: list, output_path: str):
     ws3.sheet_view.showGridLines = False
 
     _r2 = last_data_row
-    adr_col_ref  = f"'Все тарифы'!$E$2:$E${_r2}"
+    adr_col_ref = f"'Все тарифы'!$E$2:$E${_r2}"
     date_col_ref = f"'Все тарифы'!${_date_col_letter}$2:${_date_col_letter}${_r2}"
     comp_col_ref = f"'Все тарифы'!${_comp_col_letter}$2:${_comp_col_letter}${_r2}"
 
-    unique_dates = list(dict.fromkeys(
-        _fmt_date(dk.split(" → ")[0]) for dk in by_date.keys()
-    ))
+    unique_dates = list(
+        dict.fromkeys(_fmt_date(dk.split(" → ")[0]) for dk in by_date.keys())
+    )
 
     # Compute min competitor ADR per date in Python (Excel MINIFS unreliable on Mac LTSC)
     min_adr_by_date: dict[str, float] = {}
@@ -1195,7 +1464,10 @@ def export_excel(results: list, output_path: str):
         checkin_str, checkout_str = dk.split(" → ")
         checkin_fmt = _fmt_date(checkin_str)
         try:
-            nights = (datetime.strptime(checkout_str, "%Y-%m-%d") - datetime.strptime(checkin_str, "%Y-%m-%d")).days or 1
+            nights = (
+                datetime.strptime(checkout_str, "%Y-%m-%d")
+                - datetime.strptime(checkin_str, "%Y-%m-%d")
+            ).days or 1
         except Exception:
             nights = 1
         for prop in props:
@@ -1205,7 +1477,10 @@ def export_excel(results: list, output_path: str):
                 pn = offer.price_night
                 if pn and pn > 0:
                     adr = pn / nights
-                    if checkin_fmt not in min_adr_by_date or adr < min_adr_by_date[checkin_fmt]:
+                    if (
+                        checkin_fmt not in min_adr_by_date
+                        or adr < min_adr_by_date[checkin_fmt]
+                    ):
                         min_adr_by_date[checkin_fmt] = adr
 
     # Title
@@ -1233,7 +1508,7 @@ def export_excel(results: list, output_path: str):
     ws3.freeze_panes = "A3"
 
     _thin_b = Side(style="thin", color="BDD7EE")
-    _med_b  = Side(style="medium", color="2E75B6")
+    _med_b = Side(style="medium", color="2E75B6")
 
     for rpt_row, date_str in enumerate(unique_dates, 3):
         bg = "FFFFFF" if rpt_row % 2 == 0 else "EBF3FB"
@@ -1243,21 +1518,21 @@ def export_excel(results: list, output_path: str):
         c_date.alignment = Alignment(horizontal="center", vertical="center")
         c_date.font = XFont(name="Arial", bold=False, color="000000", size=10)
 
-        avg_formula = (
-            f"=IFERROR(AVERAGEIFS({adr_col_ref},{date_col_ref},A{rpt_row},{comp_col_ref},1),\"\")"
-        )
+        avg_formula = f'=IFERROR(AVERAGEIFS({adr_col_ref},{date_col_ref},A{rpt_row},{comp_col_ref},1),"")'
         c_avg = ws3.cell(row=rpt_row, column=2, value=avg_formula)
         c_avg.fill = PatternFill("solid", fgColor=bg)
         c_avg.alignment = Alignment(horizontal="center", vertical="center")
         c_avg.font = XFont(name="Arial", bold=True, color="1F3864", size=11)
-        c_avg.number_format = '#,##0'
+        c_avg.number_format = "#,##0"
 
         min_val = min_adr_by_date.get(date_str)
-        c_min = ws3.cell(row=rpt_row, column=3, value=round(min_val) if min_val is not None else "")
+        c_min = ws3.cell(
+            row=rpt_row, column=3, value=round(min_val) if min_val is not None else ""
+        )
         c_min.fill = PatternFill("solid", fgColor=bg)
         c_min.alignment = Alignment(horizontal="center", vertical="center")
         c_min.font = XFont(name="Arial", bold=False, color="2E75B6", size=11)
-        c_min.number_format = '#,##0'
+        c_min.number_format = "#,##0"
 
         ws3.row_dimensions[rpt_row].height = 20
 
@@ -1280,7 +1555,9 @@ def export_excel(results: list, output_path: str):
     wb.calculation.fullCalcOnLoad = True
     wb.save(output_path)
     log.info(f"✓ Сохранено: {output_path}")
-    import subprocess; subprocess.Popen(["open", output_path])
+    import subprocess
+
+    subprocess.Popen(["open", output_path])
 
 
 def _csv(results, path):
