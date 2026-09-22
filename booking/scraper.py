@@ -60,7 +60,13 @@ def load_properties() -> dict:
         log.error(f"Файл не найден: {PROPERTIES_FILE}")
         raise SystemExit(1)
     with open(PROPERTIES_FILE, encoding="utf-8") as f:
-        return json.load(f)
+        data = json.load(f)
+    global _DEFAULT_DATES
+    _DEFAULT_DATES = data.get("default_dates", [])
+    return {k: v for k, v in data.items()
+            if isinstance(v, dict) and "url" in v and not k.startswith("_")}
+
+_DEFAULT_DATES: list = []
 
 
 PROPERTIES = load_properties()
@@ -353,11 +359,18 @@ async def find_alt_dates(page: Page) -> list[dict]:
             });
             Object.keys(seen).forEach(function(k) {
                 var g = seen[k];
+                // The date/nights/price can end up merged into ONE anchor's text
+                // (Booking sometimes wraps a whole "date option" row in a single <a>).
+                // Only pull the digits that directly follow the currency marker —
+                // stripping ALL non-digits from the whole text would glue the day-
+                // of-month, nights count and price together into one bogus number.
                 var priceText = g.texts.find(function(t) {
-                    return /(THB|฿)/i.test(t) && /\d{3,}/.test(t);
+                    return /(THB|฿)\s*[\d\s.,]{3,}\d/i.test(t);
                 });
                 if (!priceText) return;
-                var n = parseFloat(priceText.replace(/[^0-9.]/g, ''));
+                var pm = priceText.match(/(?:THB|฿)\s*([\d\s.,]{3,}\d)/i);
+                if (!pm) return;
+                var n = parseFloat(pm[1].replace(/[^0-9.]/g, ''));
                 if (!(n >= 100)) return;
                 out.push({checkin: g.checkin, checkout: g.checkout, price: n});
             });
@@ -371,7 +384,15 @@ async def find_alt_dates(page: Page) -> list[dict]:
 
 def _pick_best_alt(cands: list[dict], checkin: str, checkout: str) -> Optional[dict]:
     """Из найденных альт-дат выбирает ближайшую к запрошенному периоду —
-    сперва по близости даты заезда, затем по близости числа ночей."""
+    сперва по близости даты заезда, затем по близости числа ночей.
+    Кандидаты, чьи даты СОВПАДАЮТ с запрошенными, исключаются — такие приходят
+    из блока "Похожие варианты" (другие объекты на те же даты), это не
+    альтернативные даты ЭТОГО объекта."""
+    if not cands:
+        return None
+    cands = [
+        c for c in cands if not (c["checkin"] == checkin and c["checkout"] == checkout)
+    ]
     if not cands:
         return None
     try:
@@ -1202,9 +1223,7 @@ def export_excel(results: list, output_path: str):
                     alt_label = (
                         f"⚠ ДРУГИЕ ДАТЫ (не запрошенные!): "
                         f"{_fmt_date(prop.alt_checkin)}–{_fmt_date(prop.alt_checkout)} "
-                        f"({prop.alt_nights} ноч.) = {prop.alt_price:,.0f}฿".replace(
-                            ",", " "
-                        )
+                        f"({prop.alt_nights} ноч.) = {prop.alt_price:,.0f}฿".replace(",", " ")
                         + (
                             f"  (ADR≈{alt_adr:,.0f}฿)".replace(",", " ")
                             if alt_adr
@@ -1215,12 +1234,8 @@ def export_excel(results: list, output_path: str):
                         [name_str, alt_label, "", "", "", "", "", "", ""], 1
                     ):
                         c = ws.cell(row=row, column=ci, value=val)
-                        c.fill = fill(
-                            "FDE9D9"
-                        )  # orange tint — clearly not a normal price row
-                        c.font = fnt(
-                            italic=True, bold=(ci == 2), color="B34700", size=9
-                        )
+                        c.fill = fill("FDE9D9")  # orange tint — clearly not a normal price row
+                        c.font = fnt(italic=True, bold=(ci == 2), color="B34700", size=9)
                         c.alignment = aln(h="left" if ci <= 2 else "center")
                         if ci == 1:
                             c.hyperlink = prop.alt_url or prop_link
@@ -1411,7 +1426,9 @@ def export_excel(results: list, output_path: str):
 
             if not prop.offers and prop.alt_price and prop.alt_checkin:
                 alt_adr = (
-                    round(prop.alt_price / prop.alt_nights) if prop.alt_nights else None
+                    round(prop.alt_price / prop.alt_nights)
+                    if prop.alt_nights
+                    else None
                 )
                 row_data2 = [
                     f"{_fmt_date(prop.alt_checkin)}→{_fmt_date(prop.alt_checkout)}",
@@ -1431,11 +1448,7 @@ def export_excel(results: list, output_path: str):
                     if ci == 3 and val:
                         c.number_format = '#,##0 "฿"'
                 if alt_adr:
-                    note_c = ws2.cell(
-                        row=srow,
-                        column=6,
-                        value=f"ADR≈{alt_adr:,.0f}".replace(",", " "),
-                    )
+                    note_c = ws2.cell(row=srow, column=6, value=f"ADR≈{alt_adr:,.0f}".replace(",", " "))
                     note_c.font = fnt(italic=True, color="B34700", size=9)
                     note_c.alignment = aln(h="center")
                 ws2.row_dimensions[srow].height = 17
@@ -1458,8 +1471,9 @@ def export_excel(results: list, output_path: str):
         dict.fromkeys(_fmt_date(dk.split(" → ")[0]) for dk in by_date.keys())
     )
 
-    # Compute min competitor ADR per date in Python (Excel MINIFS unreliable on Mac LTSC)
+    # Compute min/max competitor ADR per date in Python (Excel MINIFS/MAXIFS unreliable on Mac LTSC)
     min_adr_by_date: dict[str, float] = {}
+    max_adr_by_date: dict[str, float] = {}
     for dk, props in by_date.items():
         checkin_str, checkout_str = dk.split(" → ")
         checkin_fmt = _fmt_date(checkin_str)
@@ -1482,9 +1496,14 @@ def export_excel(results: list, output_path: str):
                         or adr < min_adr_by_date[checkin_fmt]
                     ):
                         min_adr_by_date[checkin_fmt] = adr
+                    if (
+                        checkin_fmt not in max_adr_by_date
+                        or adr > max_adr_by_date[checkin_fmt]
+                    ):
+                        max_adr_by_date[checkin_fmt] = adr
 
     # Title
-    ws3.merge_cells("A1:C1")
+    ws3.merge_cells("A1:D1")
     title_cell = ws3.cell(row=1, column=1, value="Отчёт ADR — Конкуренты (Booking.com)")
     title_cell.font = XFont(name="Arial", bold=True, color="FFFFFF", size=13)
     title_cell.fill = PatternFill("solid", fgColor="1F3864")
@@ -1492,7 +1511,7 @@ def export_excel(results: list, output_path: str):
     ws3.row_dimensions[1].height = 32
 
     # Column headers
-    rpt_headers = ["Дата заезда", "Средний ADR, ฿", "Мин ADR, ฿"]
+    rpt_headers = ["Дата заезда", "Средний ADR, ฿", "Мин ADR, ฿", "Макс ADR, ฿"]
     for ci, h in enumerate(rpt_headers, 1):
         c = ws3.cell(row=2, column=ci, value=h)
         c.font = XFont(name="Arial", bold=True, color="FFFFFF", size=10)
@@ -1534,22 +1553,32 @@ def export_excel(results: list, output_path: str):
         c_min.font = XFont(name="Arial", bold=False, color="2E75B6", size=11)
         c_min.number_format = "#,##0"
 
+        max_val = max_adr_by_date.get(date_str)
+        c_max = ws3.cell(
+            row=rpt_row, column=4, value=round(max_val) if max_val is not None else ""
+        )
+        c_max.fill = PatternFill("solid", fgColor=bg)
+        c_max.alignment = Alignment(horizontal="center", vertical="center")
+        c_max.font = XFont(name="Arial", bold=False, color="C0392B", size=11)
+        c_max.number_format = "#,##0"
+
         ws3.row_dimensions[rpt_row].height = 20
 
     last_rpt_row = 2 + len(unique_dates)
     for r in range(2, last_rpt_row + 1):
-        for ci in range(1, 4):
+        for ci in range(1, 5):
             c = ws3.cell(row=r, column=ci)
             c.border = Border(
                 top=_med_b if r == 2 else _thin_b,
                 bottom=_med_b if r == last_rpt_row else _thin_b,
                 left=_med_b if ci == 1 else _thin_b,
-                right=_med_b if ci == 3 else _thin_b,
+                right=_med_b if ci == 4 else _thin_b,
             )
 
     ws3.column_dimensions["A"].width = 16
     ws3.column_dimensions["B"].width = 18
     ws3.column_dimensions["C"].width = 16
+    ws3.column_dimensions["D"].width = 16
 
     wb.calculation.calcMode = "auto"
     wb.calculation.fullCalcOnLoad = True
@@ -1661,29 +1690,29 @@ async def run(
             all_jobs_by_period.append((jobs, batch))
 
         # ── Pass 2: retry all failures across all periods ──────────────────
-        for attempt in range(1, MAX_RETRIES + 1):
-            failed = [
-                (i, j)
-                for i, (jobs, batch) in enumerate(all_jobs_by_period)
-                for j, r in zip(jobs, batch)
-                if r.error in RETRY_ERRORS
-            ]
-            if not failed:
-                break
-            labels = ", ".join(j["label"] or j["url"][34:55] for _, j in failed)
-            log.info(
-                f"\n↻ Повтор {attempt}/{MAX_RETRIES}: {len(failed)} объектов ({labels})"
-            )
-            await asyncio.sleep(3.0 * attempt)
-            retry_jobs = [j for _, j in failed]
-            retried = await scrape_batch(pw, retry_jobs, headless=headless, sem=sem)
-            retry_map = {(r.url, r.checkin): r for r in retried}
-            # Patch results in-place
-            for i, (jobs, batch) in enumerate(all_jobs_by_period):
-                all_jobs_by_period[i] = (
-                    jobs,
-                    [retry_map.get((r.url, r.checkin), r) for r in batch],
-                )
+        # for attempt in range(1, MAX_RETRIES + 1):
+        #     failed = [
+        #         (i, j)
+        #         for i, (jobs, batch) in enumerate(all_jobs_by_period)
+        #         for j, r in zip(jobs, batch)
+        #         if r.error in RETRY_ERRORS
+        #     ]
+        #     if not failed:
+        #         break
+        #     labels = ", ".join(j["label"] or j["url"][34:55] for _, j in failed)
+        #     log.info(
+        #         f"\n↻ Повтор {attempt}/{MAX_RETRIES}: {len(failed)} объектов ({labels})"
+        #     )
+        #     await asyncio.sleep(3.0 * attempt)
+        #     retry_jobs = [j for _, j in failed]
+        #     retried = await scrape_batch(pw, retry_jobs, headless=headless, sem=sem)
+        #     retry_map = {(r.url, r.checkin): r for r in retried}
+        #     # Patch results in-place
+        #     for i, (jobs, batch) in enumerate(all_jobs_by_period):
+        #         all_jobs_by_period[i] = (
+        #             jobs,
+        #             [retry_map.get((r.url, r.checkin), r) for r in batch],
+        #         )
 
         for _, batch in all_jobs_by_period:
             all_results.extend(batch)
@@ -1731,7 +1760,7 @@ def parse_date_input(s: str) -> str:
 
 
 def prompt_dates() -> list[tuple[str, str]]:
-    default_dates = PROPERTIES.get("default_dates", [])
+    default_dates = _DEFAULT_DATES
     pairs = []
     print("\n─── Ввод дат ───────────────────────────────────────")
     if default_dates:
