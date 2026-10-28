@@ -1,23 +1,23 @@
 {
   "_comment": "Даты по умолчанию — используются если не указаны в аргументах и не введены вручную",
   "default_dates": [
-    {"checkin": "2026-08-05", "checkout": "2026-08-16"},
-    {"checkin": "2026-09-05", "checkout": "2026-09-16"},
-    {"checkin": "2026-10-05", "checkout": "2026-10-16"},
-    {"checkin": "2026-11-05", "checkout": "2026-11-11"},
-    {"checkin": "2026-12-05", "checkout": "2026-12-16"},
-    {"checkin": "2026-12-20", "checkout": "2027-01-05"},
-    {"checkin": "2027-01-05", "checkout": "2027-01-16"},
-    {"checkin": "2027-02-05", "checkout": "2027-02-16"},
-    {"checkin": "2027-03-05", "checkout": "2027-03-16"},
-    {"checkin": "2027-04-05", "checkout": "2027-04-16"},
-    {"checkin": "2027-05-05", "checkout": "2027-05-16"},
-    {"checkin": "2027-06-05", "checkout": "2027-06-16"},
-    {"checkin": "2027-07-05", "checkout": "2027-07-16"}
-  ],
+    {"checkin": "2026-11-14", "checkout": "2026-11-24"},
+    {"checkin": "2026-12-06", "checkout": "2026-12-16"},
+    {"checkin": "2026-12-25", "checkout": "2027-01-09"},
+    {"checkin": "2027-01-10", "checkout": "2027-01-20"},
+    {"checkin": "2027-02-06", "checkout": "2027-02-16"},
+    {"checkin": "2027-03-06", "checkout": "2027-03-16"},
+    {"checkin": "2027-04-06", "checkout": "2027-04-16"},
+    {"checkin": "2027-05-06", "checkout": "2027-05-16"},
+    {"checkin": "2027-06-06", "checkout": "2027-06-16"},
+    {"checkin": "2027-07-06","checkout": "2027-07-16" },
+    {"checkin": "2027-08-06","checkout": "2027-08-16" },
+    {"checkin": "2027-09-06","checkout": "2027-09-16" }
+  	],
 
-  "ozone": {
-    "label": "Ozone 1BR",
+  "ozone1br": {
+    "label": "Ozone 1br",
+    "adr_room_filter": ["one-bedroom", "1-bedroom", "1 bed", "1br", "studio"],
     "url": "https://www.booking.com/hotel/th/ozone-bangtao-residence-by-metrika-phuket.html",
     "competitors": [
       {
@@ -63,9 +63,10 @@
     ],
 		"_comment": "https://www.booking.com/searchresults.en-gb.html?latitude=8.00549571&longitude=98.30462434&checkin=2026-08-05&checkout=2026-08-16&group_adults=2&selected_currency=THB&nflt=ht_id%3D201"
   },
-  "ozone2BR": {
+  "ozone2br": {
     "label": "Ozone 2BR",
-    "url": "https://www.booking.com/hotel/th/ozone-bangtao-residence-by-metrika-phuket.html",
+    "adr_room_filter": ["two-bedroom", "2-bedroom", "2 bed", "2br"],
+    "url": "https://www.booking.com/hotel/th/new-ozone-oasis-bangtao-by-metrika.ru.html",
     "competitors": [
       {
         "label": "Ozone Сondo Apart Hotel by TropicLook",
@@ -82,12 +83,33 @@
       {
         "label": "Suite Melos 2BR Pool Gym Access Ozone",
         "url": "https://www.booking.com/hotel/th/suite-melos-2br-pool-gym-access-ozone.ru.html"
+      },
+      {
+        "label": "Suite Anafi 2BR Pool Gym Access Ozone",
+        "url": "https://www.booking.com/hotel/th/suite-anafi-2br-pool-gym-access-ozone.ru.html"
+      },
+      {
+        "label": "Modern 2BR Apartment with Golf View in Laguna Phuket - Condo Ozone 108-156О",
+        "url": "https://www.booking.com/hotel/th/ozone-bangtao-108-156.ru.html"
+      },
+      {
+        "label": "2BR Felix Spacious Apartment BangTao",
+        "url": "https://www.booking.com/hotel/th/2br-felix-spacious-apartment-bangtao.ru.html"
+      },
+      {
+        "label": "",
+        "url": ""
+      },
+      {
+        "label": "The Ozone Laguna - Serviced Apartments",
+        "url": "https://www.booking.com/hotel/th/ozone-laguna-2-br-condo.ru.html"
       }
     ],
-		"_comment": "https://www.booking.com/searchresults.en-gb.html?aid=304142&label=gen173nr-10CAQoggI49ANICVgEaKkBiAEBmAEzuAEHyAEN2AED6AEB-AEBiAIBqAIBuALQm4fTBsACAdICJDdjNDM4ZTg5LTE2YjItNDVlNi1iYWRjLTY0NzE1ODRkZDE2Y9gCAeACAQ&latitude=8.00549571&longitude=98.30462434&checkin=2026-08-05&checkout=2026-08-16&group_adults=2&selected_currency=THB&nflt=ht_id%3D201%3Bentire_place_bedroom_count%3D2"
+		"_comment": "https://www.booking.com/searchresults.en-gb.html?aid=304142&label=gen173nr-10CAQoggI49ANICVgEaKkBiAEBmAEzuAEHyAEN2AED6AEB-AEBiAIBqAIBuALQm4fTBsACAdICJDdjNDM4ZTg5LTE2YjItNDVlNi1iYWRjLTY0NzE1ODRkZDE2Y9gCAeACAQ&latitude=8.005732&longitude=98.305488&checkin=2026-10-17&checkout=2026-10-27&group_adults=2&selected_currency=THB&nflt=ht_id%3D201%3Bentire_place_bedroom_count%3D2"
   },
   "cassia": {
     "label": "Cassia 2BR",
+    "adr_room_filter": ["two-bedroom", "2-bedroom", "2 bed", "2br", "2bd"],
     "url": "https://www.booking.com/hotel/th/cassia-residence-apartments.html",
     "competitors": [
 			{
@@ -123,6 +145,7 @@
   },
 	"oxygen": {
 		"label" : "Cozy 3-Bedroom Pool Villa at Oxygen Bang Tao by Metrika",
+		"adr_room_filter": ["three-bedroom", "3-bedroom", "3 bed", "3br", "villa"],
 		"url" : "https://www.booking.com/hotel/th/cozy-3-bedroom-pool-villa-at-oxygen-bang-tao-by-metrika.ru.html",
 		"competitors": [
 			{
@@ -146,13 +169,267 @@
 			"url" : "https://www.booking.com/hotel/th/private-pool-villa-in-the-heart-on-bangtao.ru.html"
 		},
 		{
-			"label": "3 BR Pool Villa Oxygen 271-26 near Bangtao beach",
-			"url" : "https://www.booking.com/hotel/th/oxygen-271-26.html"
-			},
+			"label": "Private villa at Oxygen Bangtao -pool garden BBQ",
+			"url" : "https://www.booking.com/hotel/th/private-pool-villa-near-bangtao-beach.ru.html"
+		},
+		{
+			"label": "3BR Villa with Private Pool in Bang Tao",
+			"url" : "https://www.booking.com/hotel/th/peaceful-pool-villa-bangtao.ru.html"
+		},
 		{
 			"label": "Two Villas HOLIDAY - Oxygen Style Bangtao Beach, Phuket",
 			"url" : "https://www.booking.com/hotel/th/two-villas-holiday-oxygen-bang-tao-beach.ru.html"
 		}],
-			"comment": "https://www.booking.com/searchresults.html?aid=304142&label=gen173nr-10CAQoggI49ANIM1gEaKkBiAEBmAEzuAEHyAEN2AED6AEB-AEBiAIBqAIBuALEu7fSBsACAdICJDRmMTYxY2ExLTFmNmQtNDEzOS04MjgwLWUxYmViNDNkZTE1MNgCAeACAQ&latitude=7.985328&longitude=98.296049&checkin=2026-09-14&checkout=2026-09-26&group_adults=6&selected_currency=THB&radius=0.2&nflt=ht_id%3D213"
+			"_comment": "https://www.booking.com/searchresults.html?aid=304142&label=gen173nr-10CAQoggI49ANIM1gEaKkBiAEBmAEzuAEHyAEN2AED6AEB-AEBiAIBqAIBuALEu7fSBsACAdICJDRmMTYxY2ExLTFmNmQtNDEzOS04MjgwLWUxYmViNDNkZTE1MNgCAeACAQ&latitude=7.985328&longitude=98.296049&checkin=2026-09-14&checkout=2026-09-26&group_adults=6&selected_currency=THB&radius=0.2&nflt=ht_id%3D213"
+		},
+	"lakeside1br": {
+    "label": "Lakeside 1BR",
+    "adr_room_filter": ["one-bedroom", "1-bedroom", "1 bed", "1br"],
+    "url": "",
+		"comment":"https://www.booking.com/searchresults.en-gb.html?label=gen173nr-10CAQoggI49ANICVgEaKkBiAEBmAEzuAEHyAEN2AED6AEB-AEBiAIBqAIBuALFw-3SBsACAdICJDgyMzJlMWY2LTJkZDgtNDRiZC1iMjAyLWYzODE1ZTAwYWRmNNgCAeACAQ&aid=304142&latitude=7.996338&longitude=98.301763&checkin=2026-08-06&checkout=2026-08-16&group_adults=2&selected_currency=THB&nflt=ht_id%3D201#map_closed",
+    "competitors": [
+      {"comment": "Laguna Lakeside apartments with panoramic view", "url": "https://www.booking.com/hotel/th/cozy-apartments-with-lake-views-in-laguna-tambon-choeng-thale.ru"},
+      {"label": "Laguna Lakeside BangTao Phuket", "url": "https://www.booking.com/hotel/th/laguna-lakeside-bangtao-phuket.ru.html"},
+      {"label": "Laguna Lakeside Residences by Banyan Living", "url": "https://www.booking.com/hotel/th/laguna-lakeside-residences.ru.html"},
+      {"label": "Laguna Lakeside by Villacarte", "url": "https://www.booking.com/hotel/th/laguna-lakeside-1104-by-villacarte.ru.html"},
+      {"label": "Laguna Lakeside BangTao Лагуна Лейксайд Lagoona operated by OK Group", "url": "https://www.booking.com/hotel/th/laguna-lakeside-laguna-leiksaid-lagoona.ru.html"},
+      {"label": "Laguna Lakeside Residences-YWYJ", "url": "https://www.booking.com/hotel/th/laguna-lakeside-residences-tambon-choeng-thale1.ru.html"},
+      {"label": "Laguna Lakeside Residences", "url": "https://www.booking.com/hotel/th/laguna-lakeside-residences-tambon-choeng-thale.ru.html"}
+    ]
+  },
+	"skypark1br": {
+		"label" : "skypark",
+		"url" : "",
+		"competitors": [
+			{
+			"label": "Skypark Laguna Rooftop Pool Apartment near Bang Tao Beach",
+			"url" : "https://www.booking.com/hotel/th/skypark-laguna-apartments.ru.html"
+		}, 
+			{
+			"label": "Skypark by Villacarte",
+			"url" : "https://www.booking.com/hotel/th/skypark-by-villacarte.ru.html"
+		}, 
+			{
+			"label": "Sky Park Breeze Studio at Bangtao",
+			"url" : "https://www.booking.com/hotel/th/cozy-studio-laguna-skypark-phuuket.ru"
+		}, 
+			{
+			"label": "One-Bedroom Apartment at Laguna Skypark",
+			"url" : "https://www.booking.com/hotel/th/uiutnye-apartamenty-v-laguna-skypark.ru.html"
+		}, 
+			{
+			"label": "Skypark Aurora Building 2 in Laguna by Banyan Livi",
+			"url" : "https://www.booking.com/hotel/th/skypark-aurora-building-2-in-laguna-by-banyan-living.ru.html"
+		}, 
+			{
+			"label": "Cozy studio 1 bdr Golf view",
+			"url" : "https://www.booking.com/hotel/th/cozy-studio-1-bar-golf-view.ru.html"
+		}, 
+			{
+			"label": "Skypark Aurora Building 3 in Laguna by Banyan Living",
+			"url" : "https://www.booking.com/hotel/th/skypark-aurora-building-3-in-laguna-by-banyan-living.ru.html"
+		}, 
+			{
+			"label": "SKYPARK Building A Laguna Phuket",
+			"url" : "https://www.booking.com/hotel/th/laguna-skypark-phuket.ru.html"
+		}, 
+			{
+			"label": "Laguna Skypark Residences - Bang Tao",
+			"url" : "https://www.booking.com/hotel/th/2br-rooftop-pool-amp-gym-laguna-skypark.ru.html"
+		}, 
+			{
+			"label": "Modern Laguna Skypark apartments by Lofty",
+			"url" : "https://www.booking.com/hotel/th/laguna-skypark-apartment-by-lofty.ru.html"
+		}, 
+			{
+			"label": "Skypark view golf Laguna Phuket",
+			"url" : "https://www.booking.com/hotel/th/laguna-sky-park.ru.html"
+		}
+			
+		],
+			"comment": "https://www.booking.com/searchresults.html?aid=304142&latitude=8.001104&longitude=98.299683&checkin=2026-09-01&checkout=2026-09-11&group_adults=2&selected_currency=THB&radius=0.2"
+		},
+    "fantasea1BR": {
+		"label" : "fantasea1BR",
+		"url" : "",
+		"competitors": [
+			{
+			"label": "Fantasea Condo - Kamala",
+			"url" : "https://www.booking.com/hotel/th/fantasea-condo-kamala-tambon-kamala.ru.html"
+		}, 
+			{
+			"label": "Japanese-Style Condo close Kamala Beach",
+			"url" : "https://www.booking.com/hotel/th/ri-shi-feng-ge-de-hai-bian-gong-yu.ru.html"
+		}, 
+			{
+			"label": "Fantasea Kamala Beach 1 BR 313",
+			"url" : "https://www.booking.com/hotel/th/fantasea-kamala-beach-1-br-313.ru.html"
+		}, 
+			{
+			"label": "全新现代风格 魅力泳池公寓",
+			"url" : "https://www.booking.com/hotel/th/quan-xin-xian-dai-feng-ge-mei-li-yong-chi-gong-yu.ru.html"
+		}, 
+			{
+			"label": "Peaceful Fantasia Condo Kamala",
+			"url" : "https://www.booking.com/hotel/th/baanjai-surin-beach-phuket.ru.html"
+		}, 
+			{
+			"label": "FANTASEA One Bedroom & Living Room Plus Balcony",
+			"url" : "https://www.booking.com/hotel/th/fantasea-world-kamala-1-bed-amp-living-room-balcony.ru.html"
+		}, 
+			{
+			"label": "",
+			"url" : ""
+		} 
+			
+		],
+			"comment": "https://www.booking.com/searchresults.en-gb.html?latitude=7.955648&longitude=98.290372&checkin=2026-10-02&checkout=2026-10-12&group_adults=2&selected_currency=THB&nflt=ht_id%3D201"
+		},
+    "serenity": {
+		"label" : "serenity1BR",
+		"url" : "",
+		"competitors": [
+			{
+			"label": "The Title Serenity Naiyang Beach",
+			"url" : "https://www.booking.com/hotel/th/the-title-serenity-naiyang-beach-tambon-sa-khu.ru.html"
+		}, 
+			{
+			"label": "Квартира в Serenity с шикарным видом",
+			"url" : "https://www.booking.com/hotel/th/kvartira-v-serenity-s-shikarnym-vidom.ru.html"
+		}, 
+			{
+			"label": "The Title Serenity Naiyang by BaYar-WHATSAPP66935B2I976 RUBLES",
+			"url" : "https://www.booking.com/hotel/th/the-title-serenity-naiyang-by-bayar-whatsapp66935b2i976-rubles.ru.html"
+		}, 
+			{
+			"label": "The Title Serenity by Mill A418",
+			"url" : "https://www.booking.com/hotel/th/the-title-serenity-by-mill-a418.ru.html"
+		}, 
+			{
+			"label": "Apartment at the Title Serenity by Lofty",
+			"url" : "https://www.booking.com/hotel/th/apartment-at-the-title-serenity-by-lofty.ru.html"
+		}, 
+			{
+			"label": "Serenity Nai Yang Apartments",
+			"url" : "https://www.booking.com/hotel/th/serenity-nai-yang-apartments.ru.html"
+		}, 
+			{
+			"label": "Title Serenity 1-Bedroom Suite with Balcony by TVC D216",
+			"url" : "https://www.booking.com/hotel/th/title-serenity-pool-view-suite-c216.ru.html"
+		}, 
+			{
+			"label": "Title Serenity 1-Bedroom Suite with Balcony by TVC C205",
+			"url" : "https://www.booking.com/hotel/th/title-serenity-garden-view-suite-c205.ru.html"
+		}
+			
+		],
+			"comment": "https://www.booking.com/searchresults.en-gb.html?latitude=8.091042&longitude=98.302743&checkin=2026-10-02&checkout=2026-10-12&group_adults=2&selected_currency=THB&nflt=ht_id%3D201"
+		},
+    "heritage": {
+		"label" : "heritage",
+		"url" : "",
+		"competitors": [
+			{
+			"label": "The Title heritage",
+			"url" : "https://www.booking.com/hotel/th/the-title-heritage-bang-tao.ru.html"
+		}
+			
+		],
+			"comment": "https://www.booking.com/searchresults.en-gb.html?latitude=8.091042&longitude=98.302743&checkin=2026-10-02&checkout=2026-10-12&group_adults=2&selected_currency=THB&nflt=ht_id%3D201"
+		},
+    "legendary1br": {
+		"label" : "legendary",
+		"url" : "",
+		"competitors": [
+			{
+			"label": "The Title Legendary Stylish Studio Pool & Spa Bang Tao",
+			"url" : "https://www.booking.com/hotel/th/legendary.ru.html"
+		},
+			{
+			"label": "villacarte",
+			"url" : "https://www.booking.com/hotel/th/title-legendary-by-villacarte.ru.html"
+		},
+			{
+			"label": "The Title Legendary Bang Tao Beach by Sino-Thai",
+			"url" : "https://www.booking.com/hotel/th/the-title-legendary-bang-tao-beach-tambon-choeng-thale.ru.html"
+		},
+			{
+			"label": "Title Legendary Studio with Balcony by TVC",
+			"url" : "https://www.booking.com/hotel/th/title-legendary-garden-view-c403.ru.html"
+		},
+			{
+			"label": "title-legendary-apartment-800m-to-bang-tao",
+			"url" : "https://www.booking.com/hotel/th/title-legendary-apartment-800m-to-bang-tao-beach.ru.html"
+		},
+			{
+			"label": "Elegant & Spacious City Retreat Prime LocationОткроется в новом окне",
+			"url" : "https://www.booking.com/hotel/th/elegant-amp-spacious-city-retreat-prime-location-tamblechingthael.ru.html"
+		},
+			{
+			"label": "1BDR Mountain View Legendary Bang Tao",
+			"url" : "https://www.booking.com/hotel/th/1bdr-mountain-view-legendary-bang-tao.ru.html"
+		},
+			{
+			"label": " F412 New & Stunning - The Title Legendary by UNO",
+			"url" : "https://www.booking.com/hotel/th/f412-new-amp-stunning-the-title-legendary-by-uno.ru.html"
+		}
+			
+		],
+			"_comment": "https://www.booking.com/searchresults.en-gb.html?latitude=7.9899399&longitude=98.2940738&checkin=2026-11-12&checkout=2026-11-22&group_adults=2&selected_currency=THB"
+		},
+    "legendary2br": {
+		"label" : "legendary2br",
+		"url" : "",
+		"competitors": [
+			{
+			"label": "Family Title Legendary 2Bdr Bang Tao",
+			"url" : "https://www.booking.com/hotel/th/family-legendary-2bdr-bang-tao.ru.html"
+		},
+			{
+			"label": "Bang Tao - 10 Min to Beach - Family Comfort with 2 Baths",
+			"url" : "https://www.booking.com/hotel/th/supreme-2br-picturesque-courtyard-amp-pool-view-f501.ru.html"
+		},
+			{
+			"label": "The Title Legendary Condo with a large terrace 308",
+			"url" : "https://www.booking.com/hotel/th/the-apart-38-lux-in-legendary-2-bedrooms.ru.html"
+		},
+			{
+			"label": "The Title Legendary 2 BDR Apartment with Pool View , Bang Tao Beac",
+			"url" : "https://www.booking.com/hotel/th/spacious-2-bedroom-apartment-with-pool-view-the-title-legendary-bang-tao-beach.ru.html"
+		},
+			{
+			"label": "Stylish 2BR Apartment near Bang Tao Beach",
+			"url" : "https://www.booking.com/hotel/th/stylish-2br-apartment-near-bang-tao-beach.ru.html"
+		},
+			{
+			"label": "Apartments 15 minutes walk from Bangtao Beach with a cinema Free Airoport Pick up from 14 days",
+			"url" : "https://www.booking.com/hotel/th/apartments-15-minutes-walk-from-bangtao-beach-with-a-cinema.ru.html"
+		}		
+		],
+			"comment": "https://www.booking.com/searchresults.en-gb.html?latitude=7.9899399&longitude=98.2940738&checkin=2026-10-12&checkout=2026-10-22&group_adults=4&selected_currency=THB&nflt=ht_id%3D201"
+		},
+	"space": {
+		"label" : "space",
+		"url" : "",
+		"competitors": [
+			{
+			"label": "Cosy 1 bedroom apt at Space Cherngtalay - 402",
+			"url" : "https://www.booking.com/hotel/th/cosy-1-bedroom-apt-at-space-cherngtalay-402.ru.html"
+			},
+			{
+			"label": "Gloria's Laguna Nest",
+			"url" : "https://www.booking.com/hotel/th/glorias-laguna-nest.ru.html"
+			},
+			{
+			"label": "Modern apartment in the heart of Bangtao",
+			"url" : "https://www.booking.com/hotel/th/modern-apartment-in-the-heart-of-bangtao.ru.html"
+			},
+			{
+			"label": "New Stylish Cozy One-bedroom Apartment in Bangtao, Phuket, Near EDC",
+			"url" : "https://www.booking.com/hotel/th/new-stylish-cozy-condo-in-phuket.ru.html"
+			}
+			
+		],
+			"_comment": "https://www.booking.com/searchresults.en-gb.html?label=gen173nr-10CAQoggI49ANICVgEaKkBiAEBmAEzuAEHyAEN2AED6AEB-AEBiAIBqAIBuALQm4fTBsACAdICJDdjNDM4ZTg5LTE2YjItNDVlNi1iYWRjLTY0NzE1ODRkZDE2Y9gCAeACAQ&aid=304142&latitude=7.994600&longitude=98.308163&checkin=2026-10-17&checkout=2026-10-27&group_adults=2&selected_currency=THB"
 		}
 }

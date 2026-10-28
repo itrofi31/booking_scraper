@@ -146,8 +146,8 @@ class PropertyResult:
 # ═════════════════════════════════════════════════════════════════════════════
 #  BROWSER HELPERS
 # ═════════════════════════════════════════════════════════════════════════════
-async def new_context(playwright, headless: bool = True):
-    browser = await playwright.chromium.launch(
+async def launch_browser(playwright, headless: bool = True):
+    return await playwright.chromium.launch(
         headless=headless,
         args=[
             "--disable-blink-features=AutomationControlled",
@@ -156,6 +156,8 @@ async def new_context(playwright, headless: bool = True):
             "--window-size=1366,768",
         ],
     )
+
+async def new_context(browser):
     ctx = await browser.new_context(
         user_agent=random.choice(USER_AGENTS),
         viewport={"width": 1366, "height": 768},
@@ -1008,32 +1010,59 @@ async def scrape_property(
 # ═════════════════════════════════════════════════════════════════════════════
 #  PARALLEL RUNNER
 # ═════════════════════════════════════════════════════════════════════════════
+# async def scrape_batch(
+#     pw, jobs: list[dict], headless: bool, sem: asyncio.Semaphore
+# ) -> list:
+#     async def _worker(job):
+#         async with sem:
+#             ctx = await new_context(pw, headless=headless)
+#             page = await ctx.new_page()
+#             try:
+#                 await asyncio.sleep(random.uniform(0.3, 1.2))
+#                 result = await scrape_property(
+#                     page,
+#                     job["url"],
+#                     job["checkin"],
+#                     job["checkout"],
+#                     job.get("adults", 2),
+#                     job.get("is_own", False),
+#                     job.get("label", ""),
+#                 )
+#                 result.adr_room_filter = job.get("adr_room_filter", [])
+#                 return result
+#             finally:
+#                 await ctx.close()
+
+#     return list(await asyncio.gather(*[_worker(j) for j in jobs]))
+
 async def scrape_batch(
     pw, jobs: list[dict], headless: bool, sem: asyncio.Semaphore
 ) -> list:
-    async def _worker(job):
-        async with sem:
-            ctx = await new_context(pw, headless=headless)
-            page = await ctx.new_page()
-            try:
-                await asyncio.sleep(random.uniform(0.3, 1.2))
-                result = await scrape_property(
-                    page,
-                    job["url"],
-                    job["checkin"],
-                    job["checkout"],
-                    job.get("adults", 2),
-                    job.get("is_own", False),
-                    job.get("label", ""),
-                )
-                result.adr_room_filter = job.get("adr_room_filter", [])
-                return result
-            finally:
-                await ctx.close()
+    browser = await launch_browser(pw, headless=headless)
+    try:
+        async def _worker(job):
+            async with sem:
+                ctx = await new_context(browser)
+                page = await ctx.new_page()
+                try:
+                    await asyncio.sleep(random.uniform(0.3, 1.2))
+                    result = await scrape_property(
+                        page,
+                        job["url"],
+                        job["checkin"],
+                        job["checkout"],
+                        job.get("adults", 2),
+                        job.get("is_own", False),
+                        job.get("label", ""),
+                    )
+                    result.adr_room_filter = job.get("adr_room_filter", [])
+                    return result
+                finally:
+                    await ctx.close()
 
-    return list(await asyncio.gather(*[_worker(j) for j in jobs]))
-
-
+        return list(await asyncio.gather(*[_worker(j) for j in jobs]))
+    finally:
+        await browser.close()
 # ═════════════════════════════════════════════════════════════════════════════
 #  EXCEL EXPORT
 # ═════════════════════════════════════════════════════════════════════════════

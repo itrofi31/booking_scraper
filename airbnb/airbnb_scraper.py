@@ -125,8 +125,9 @@ class ListingResult:
 # ═════════════════════════════════════════════════════════════════════════════
 #  BROWSER HELPERS
 # ═════════════════════════════════════════════════════════════════════════════
-async def new_context(playwright, headless: bool = True):
-    browser = await playwright.chromium.launch(
+async def launch_browser(playwright, headless: bool = True):
+    """Launch ONE shared browser — reuse across all tasks."""
+    return await playwright.chromium.launch(
         headless=headless,
         args=[
             "--disable-blink-features=AutomationControlled",
@@ -135,7 +136,11 @@ async def new_context(playwright, headless: bool = True):
             "--window-size=1440,900",
         ],
     )
-    ctx = await browser.new_context(
+
+
+async def new_context(browser):
+    """Create a new context (tab group) in the shared browser."""
+    return await browser.new_context(
         user_agent=random.choice(USER_AGENTS),
         viewport={"width": 1440, "height": 900},
         locale="en-GB",
@@ -147,7 +152,6 @@ async def new_context(playwright, headless: bool = True):
             "sec-fetch-mode": "navigate",
         },
     )
-    return ctx
 
 
 async def apply_stealth(page: Page):
@@ -856,26 +860,31 @@ async def scrape_listing(
 async def scrape_batch(
     pw, jobs: list[dict], headless: bool, sem: asyncio.Semaphore
 ) -> list:
-    async def _worker(job):
-        async with sem:
-            ctx = await new_context(pw, headless=headless)
-            page = await ctx.new_page()
-            await apply_stealth(page)
-            try:
-                await asyncio.sleep(random.uniform(0.5, 2.0))
-                return await scrape_listing(
-                    page,
-                    job["url"],
-                    job["checkin"],
-                    job["checkout"],
-                    job.get("adults", 2),
-                    job.get("is_own", False),
-                    job.get("label", ""),
-                )
-            finally:
-                await ctx.close()
+    # ONE browser for all tasks — only contexts (tabs) are created per task
+    browser = await launch_browser(pw, headless=headless)
+    try:
+        async def _worker(job):
+            async with sem:
+                ctx = await new_context(browser)
+                page = await ctx.new_page()
+                await apply_stealth(page)
+                try:
+                    await asyncio.sleep(random.uniform(0.5, 2.0))
+                    return await scrape_listing(
+                        page,
+                        job["url"],
+                        job["checkin"],
+                        job["checkout"],
+                        job.get("adults", 2),
+                        job.get("is_own", False),
+                        job.get("label", ""),
+                    )
+                finally:
+                    await ctx.close()  # closes context (tab), NOT the browser
 
-    return list(await asyncio.gather(*[_worker(j) for j in jobs]))
+        return list(await asyncio.gather(*[_worker(j) for j in jobs]))
+    finally:
+        await browser.close()  # close the ONE browser after all tasks done
 
 
 # ═════════════════════════════════════════════════════════════════════════════
@@ -1419,26 +1428,26 @@ async def run(
             all_jobs_by_period.append((jobs, batch))
 
         # Pass 2: retry failures once (not "not_available" / min_stay / request_only)
-        for attempt in range(1, 2):
-            failed = [
-                (i, j)
-                for i, (jobs, batch) in enumerate(all_jobs_by_period)
-                for j, r in zip(jobs, batch)
-                if r.error in RETRY_ERRORS
-            ]
-            if not failed:
-                break
-            labels = ", ".join(j["label"] or j["url"] for _, j in failed)
-            log.info(f"\n↻ Повтор: {len(failed)} объектов ({labels})")
-            await asyncio.sleep(4.0 * attempt)
-            retry_jobs = [j for _, j in failed]
-            retried = await scrape_batch(pw, retry_jobs, headless=headless, sem=sem)
-            retry_map = {(r.url, r.checkin): r for r in retried}
-            for i, (jobs, batch) in enumerate(all_jobs_by_period):
-                all_jobs_by_period[i] = (
-                    jobs,
-                    [retry_map.get((r.url, r.checkin), r) for r in batch],
-                )
+        # for attempt in range(1, 2):
+        #     failed = [
+        #         (i, j)
+        #         for i, (jobs, batch) in enumerate(all_jobs_by_period)
+        #         for j, r in zip(jobs, batch)
+        #         if r.error in RETRY_ERRORS
+        #     ]
+        #     if not failed:
+        #         break
+            # labels = ", ".join(j["label"] or j["url"] for _, j in failed)
+            # log.info(f"\n↻ Повтор: {len(failed)} объектов ({labels})")
+            # await asyncio.sleep(4.0 * attempt)
+            # retry_jobs = [j for _, j in failed]
+            # retried = await scrape_batch(pw, retry_jobs, headless=headless, sem=sem)
+            # retry_map = {(r.url, r.checkin): r for r in retried}
+            # for i, (jobs, batch) in enumerate(all_jobs_by_period):
+            #     all_jobs_by_period[i] = (
+            #         jobs,
+            #         [retry_map.get((r.url, r.checkin), r) for r in batch],
+            #     )
 
         for _, batch in all_jobs_by_period:
             all_results.extend(batch)

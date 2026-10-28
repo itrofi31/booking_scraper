@@ -1,92 +1,486 @@
 {
   "default_dates": [
-		{"checkin": "2026-08-05", "checkout": "2026-08-16"},
-    {"checkin": "2026-09-05", "checkout": "2026-09-16"},
-    {"checkin": "2026-10-05", "checkout": "2026-10-16"},
-    {"checkin": "2026-11-05", "checkout": "2026-11-11"},
-    {"checkin": "2026-12-05", "checkout": "2026-12-16"},
-    {"checkin": "2026-12-20", "checkout": "2027-01-05"},
-    {"checkin": "2027-01-05", "checkout": "2027-01-16"},
-    {"checkin": "2027-02-05", "checkout": "2027-02-16"},
-    {"checkin": "2027-03-05", "checkout": "2027-03-16"},
-    {"checkin": "2027-04-05", "checkout": "2027-04-16"},
-    {"checkin": "2027-05-05", "checkout": "2027-05-16"},
-    {"checkin": "2027-06-05", "checkout": "2027-06-16"},
-    {"checkin": "2027-07-05", "checkout": "2027-07-16"}
+    {"checkin": "2026-11-14", "checkout": "2026-11-24"},
+    {"checkin": "2026-12-06", "checkout": "2026-12-16"},
+    {"checkin": "2026-12-25", "checkout": "2027-01-09"},
+    {"checkin": "2027-01-10", "checkout": "2027-01-20"},
+    {"checkin": "2027-02-06", "checkout": "2027-02-16"},
+    {"checkin": "2027-03-06", "checkout": "2027-03-16"},
+    {"checkin": "2027-04-06", "checkout": "2027-04-16"},
+    {"checkin": "2027-05-06", "checkout": "2027-05-16"},
+    {"checkin": "2027-06-06", "checkout": "2027-06-16"},
+    {"checkin": "2027-07-06","checkout": "2027-07-16" },
+    {"checkin": "2027-08-06","checkout": "2027-08-16" },
+    {"checkin": "2027-09-06","checkout": "2027-09-16" }
   ],
-
-  "ozone": {
+  "ozone1BR": {
     "label": "Ozone 1BR",
     "own_urls": [
-      {"label": "Modern 1BR Apartment in Ozone Bangtao, Phuket", "url": "https://www.airbnb.com/rooms/1704307770135147942"}
+      {
+        "label": "Modern 1BR Apartment in Ozone Bangtao, Phuket",
+        "url": "https://www.airbnb.co.uk/rooms/1704886523100155728"
+      }
     ],
     "competitors": [
-      {"label": "Laguna apartment", "url": "https://www.airbnb.com/rooms/1635215375387805690"},
-      {"label": "One-Bedroom Apartment in Ozone Condominium 513", "url": "https://www.airbnb.com/rooms/1484722588067807345"},
-      {"label": "Stylish 1BR Garden View at The Ozone Bangtao", "url": "https://www.airbnb.com/rooms/1605564539738183052"},
-      {"label": "Spacious 1-BR at The Ozone Phuket BangTao Beach", "url": "https://www.airbnb.com/rooms/1484718854306347792"},
-      {"label": "The Ozone Scarlet Grey | Golf View Bangtao", "url": "https://www.airbnb.com/rooms/1500740684603894101"},
-      {"label": "The Ozone Residences 1 bedroom 5", "url": "https://www.airbnb.com/rooms/1563096115524869951"},
-      {"label": "Ozon – Brand-New Apartment in Laguna Bang Tao", "url": "https://www.airbnb.com/rooms/1630511058800560429"},
-      {"label": "The Ozone Residences 1 bedroom 134", "url": "https://www.airbnb.com/rooms/1577856088277068389"},
-      {"label": "Ozone Sky View Residence BangTao", "url": "https://www.airbnb.com/rooms/1517353471194931560"}
+      {
+        "label": "Laguna apartment",
+        "url": "https://www.airbnb.com/rooms/1635215375387805690"
+      },
+      {
+        "label": "One-Bedroom Apartment in Ozone Condominium 513",
+        "url": "https://www.airbnb.com/rooms/1484722588067807345"
+      },
+      {
+        "label": "Stylish 1BR Garden View at The Ozone Bangtao",
+        "url": "https://www.airbnb.com/rooms/1605564539738183052"
+      },
+      {
+        "label": "Spacious 1-BR at The Ozone Phuket BangTao Beach",
+        "url": "https://www.airbnb.com/rooms/1484718854306347792"
+      },
+      {
+        "label": "The Ozone Scarlet Grey | Golf View Bangtao",
+        "url": "https://www.airbnb.com/rooms/1500740684603894101"
+      },
+      {
+        "label": "The Ozone Residences 1 bedroom 5",
+        "url": "https://www.airbnb.com/rooms/1563096115524869951"
+      },
+      {
+        "label": "Ozon – Brand-New Apartment in Laguna Bang Tao",
+        "url": "https://www.airbnb.com/rooms/1630511058800560429"
+      },
+      {
+        "label": "The Ozone Residences 1 bedroom 134",
+        "url": "https://www.airbnb.com/rooms/1577856088277068389"
+      },
+      {
+        "label": "1бр",
+        "url": "https://www.airbnb.ru/rooms/1709942771532690962"
+      },
+      {
+        "label": "1бр_2",
+        "url": "https://www.airbnb.ru/rooms/1547712814008781738"
+      },
+      {
+        "label": "1бр_3",
+        "url": "https://www.airbnb.ru/rooms/1753765985288129284"
+      },
+      {
+        "label": "1бр_4",
+        "url": "https://www.airbnb.ru/rooms/1696372843042636233"
+      },
+      {
+        "label": "1бр_5",
+        "url": "https://www.airbnb.ru/rooms/1741323515922024476"
+      },
+      {
+        "label": "Ozone Sky View Residence BangTao",
+        "url": "https://www.airbnb.com/rooms/1517353471194931560"
+      }
     ]
   },
-  "ozone2BR": {
+  "ozone2br": {
     "label": "Ozone 2BR",
     "own_urls": [
-      {"label": "Modern 1BR Apartment in Ozone Bangtao, Phuket", "url": "https://www.airbnb.com/rooms/1704307770135147942"}
+      {
+        "label": "Modern 2BR Apartment in Ozone Bangtao, Phuket",
+        "url": "https://ru.airbnb.com/rooms/1752017842910135426"
+      }
     ],
     "competitors": [
-      {"label": "2BR apartments golf view", "url": "https://www.airbnb.ru/rooms/1645560268636796339"
-			},
-      {"label": "2BR apartments", "url": "https://www.airbnb.ru/rooms/1648005522541252208?adults=4&check_in=2026-08-05&check_out=2026-08-16&search_mode=regular_search&source_impression_id=p3_1784800148_P3Fg58mGfrdBcnJG&previous_page_section_name=1000&federated_search_id=c738ba8f-a6c8-4325-a563-a5dceffee9c1"
-			},
-      {"label": "Suite Anafi 2BR | Pool & Gym Access | Ozone", "url": "https://www.airbnb.ru/rooms/1610220609715934453?"
-			},
-      {"label": "Suite Salina 2BR | Pool & Gym Access | Ozone", "url": "https://www.airbnb.ru/rooms/1586381273766771507"
-			},
-      {"label": "Modern 2BR Condo | Pool & Lifestyle", "url": "https://www.airbnb.ru/rooms/1713616443002569813"
-			},
-      {"label": "Ozone Condo Laguna | 82 SQM | Pool & Gym Access", "url": "https://www.airbnb.ru/rooms/1717222472451983486"
-			},
-      {"label": "Suite Melos 2BR | Pool & Gym Access | Ozone", "url": "https://www.airbnb.ru/rooms/1574582959810533160"
-			}
+      {
+        "label": "2BR apartments golf view",
+        "url": "https://www.airbnb.ru/rooms/1645560268636796339"
+      },
+      {
+        "label": "2BR apartments",
+        "url": "https://www.airbnb.ru/rooms/1648005522541252208"
+      },
+      {
+        "label": "Suite Anafi 2BR | Pool & Gym Access | Ozone",
+        "url": "https://www.airbnb.ru/rooms/1610220609715934453?"
+      },
+      {
+        "label": "Suite Salina 2BR | Pool & Gym Access | Ozone",
+        "url": "https://www.airbnb.ru/rooms/1586381273766771507"
+      },
+      {
+        "label": "Ozone Condo Laguna | 82 SQM | Pool & Gym Access",
+        "url": "https://www.airbnb.ru/rooms/1717222472451983486"
+      },
+      {
+        "label": "Suite Melos 2BR | Pool & Gym Access | Ozone",
+        "url": "https://www.airbnb.ru/rooms/1574582959810533160"
+      },
+      {
+        "label": "Квартира с 2 спальнями в The Ozone Bangtao",
+        "url": "https://ru.airbnb.com/rooms/1738486818055369156"
+      },
+      {
+        "label": "Tropical escape at Ozone Oasis near Bangtao beach",
+        "url": "https://www.airbnb.ru/rooms/1799008443321474057"
+      },
+      {
+        "label": "Ozone Oasis Apt: 80 m2 - 419",
+        "url": "https://www.airbnb.ru/rooms/1797190352965841173"
+      },
+      {
+        "label": "Ozone Two‑Bedroom Escape",
+        "url": "https://www.airbnb.ru/rooms/1765105856902443103"
+      },
+      {
+        "label": "Modern 2 bedroom apartment",
+        "url": "https://ru.airbnb.com/rooms/1780339398960416902"
+      }
     ]
   },
-
   "cassia": {
     "label": "Cassia 2BR",
-    "url": "https://www.airbnb.com/rooms/XXXXXXXX",
+    "url": "https://www.airbnb.co.uk/rooms/1699915739321992145",
     "competitors": [
-      {"label": "Конкурент 1 — название", "url": "https://www.airbnb.com/rooms/YYYYYYYY"}
+      {
+        "label": "Cassia Residences 2BR Lake&Road View",
+        "url": "https://www.airbnb.ru/rooms/998226129840092662"
+      },
+      {
+        "label": "Cassia Residences 2BR Lake&Road View",
+        "url": "https://www.airbnb.ru/rooms/996983703052995699"
+      },
+      {
+        "label": "Cassia Residences 2BR Lake&Road View",
+        "url": "https://www.airbnb.ru/rooms/998235332409176991"
+      },
+      {
+        "label": "Cassia Residences 2BR Lake&Road View",
+        "url": "https://www.airbnb.ru/rooms/996957218339523494"
+      },
+      {
+        "label": "Cassia Residences 2BR Lake&Road View",
+        "url": "https://www.airbnb.ru/rooms/1334572337746011974"
+      },
+      {
+        "label": "Cassia Residences 2BR Lake&Road View",
+        "url": "https://www.airbnb.ru/rooms/1267735394090934633"
+      }
     ]
   },
-
-	"oxygen": {
-		"label" : "Cozy 3-Bedroom Pool Villa at Oxygen Bang Tao by Metrika",
-		"url" : "",
-		"competitors": [
-			{
-			"label": "Частная вилла в Oxygen Bangtao — бассейн, сад, барбекю",
-			"url" : "https://airbnb.com/rooms/1562317436812240431"
-		}, 
-		{
-			"label": "Тропический отдых — вилла с бассейном в Oxygen Bangtao",
-			"url" : "https://airbnb.com/rooms/1556584791770204931"
-		},
-		{
-			"label": "Просторная вилла на Бангтао с частным бассейном и садом",
-			"url" : "https://airbnb.com/rooms/19353057"
-		},
-		{
-			"label": "Вилла Oxygen (в нескольких минутах ходьбы от пляжа Банг-Тао)",
-			"url" : "https://airbnb.com/rooms/1558739219657213563"
-		},
-		{
-			"label": "Вилла с частным бассейном в центре Бангтао",
-			"url" : "https://ru.airbnb.com/rooms/1520205870818098553"
-		}
-	]
-	}
+  "lakeside1BR": {
+    "label": "Lakeside 1BR",
+    "url": "",
+    "competitors": [
+      {
+        "label": "Lavish Condo next to Boat Avenue | Laguna Lakeside",
+        "url": "https://www.airbnb.ru/rooms/1343242148027517877"
+      },
+      {
+        "label": "Милые апартаменты с видом на озеро в Laguna",
+        "url": "https://www.airbnb.ru/rooms/1350613868204761618"
+      },
+      {
+        "label": "Laguna Lakeside BangTao Phuket",
+        "url": "https://www.airbnb.ru/rooms/1549954526383666438"
+      },
+      {
+        "label": "Modern Condo•Big Pool•Walk to Bangtao Beach",
+        "url": "https://www.airbnb.ru/rooms/1680826067345039871"
+      },
+      {
+        "label": "Laguna home Bangtao",
+        "url": "https://www.airbnb.ru/rooms/1304154947191693051"
+      },
+      {
+        "label": "Laguna Lakeside Residences",
+        "url": "https://www.airbnb.ru/rooms/1629854765796074222"
+      },
+      {
+        "label": "Modern 1BR at Laguna Lakeside | Near BangTao Beach",
+        "url": "https://www.airbnb.ru/rooms/1725114252585458774"
+      },
+      {
+        "label": "Lakeside 1513 by Villacarte",
+        "url": "https://www.airbnb.ru/rooms/1618540492606782380"
+      }
+    ]
+  },
+  "oxygen": {
+    "label": "Cozy 3-Bedroom Pool Villa at Oxygen Bang Tao by Metrika",
+    "url": "https://www.airbnb.co.uk/rooms/1720177641701457128",
+    "competitors": [
+      {
+        "label": "Частная вилла в Oxygen Bangtao — бассейн, сад, барбекю",
+        "url": "https://airbnb.com/rooms/1562317436812240431"
+      },
+      {
+        "label": "Тропический отдых — вилла с бассейном в Oxygen Bangtao",
+        "url": "https://airbnb.com/rooms/1556584791770204931"
+      },
+      {
+        "label": "Просторная вилла на Бангтао с частным бассейном и садом",
+        "url": "https://airbnb.com/rooms/19353057"
+      },
+      {
+        "label": "Вилла Oxygen (в нескольких минутах ходьбы от пляжа Банг-Тао)",
+        "url": "https://airbnb.com/rooms/1558739219657213563"
+      },
+      {
+        "label": "Вилла с частным бассейном в центре Бангтао",
+        "url": "https://ru.airbnb.com/rooms/1520205870818098553"
+      }
+    ]
+  },
+  "Fantasea1BR": {
+    "label": "Fantasea1BR",
+    "url": "",
+    "competitors": [
+      {
+        "label": "1BR",
+        "url": "https://www.airbnb.co.uk/rooms/1433760960913352993"
+      },
+      {
+        "label": "1BR",
+        "url": "https://www.airbnb.co.uk/rooms/1400541582414001255"
+      },
+      {
+        "label": "1BR",
+        "url": "https://www.airbnb.co.uk/rooms/1618947414531591332"
+      },
+      {
+        "label": "1BR",
+        "url": "https://www.airbnb.co.uk/rooms/1561562635552177391"
+      }
+    ],
+    "comment": ""
+  },
+  "skypark1BR": {
+    "label": "skypark1BR",
+    "url": "",
+    "competitors": [
+      {
+        "label": "Perfect Modern Apartment",
+        "url": "https://www.airbnb.ru/rooms/1294672213463719504"
+      },
+      {
+        "label": "Laguna Skypark | 1BR, вид на гольф",
+        "url": "https://www.airbnb.ru/rooms/1723027703563058336"
+      },
+      {
+        "label": "Cozy apartments",
+        "url": "https://www.airbnb.ru/rooms/1394275995049105867"
+      },
+      {
+        "label": "Laguna SkyPark studio 5324",
+        "url": "https://www.airbnb.ru/rooms/1645753360099953949"
+      },
+      {
+        "label": "Skypark Aurora, Stylish Studio Premium",
+        "url": "https://www.airbnb.ru/rooms/1705687374587180597"
+      },
+      {
+        "label": "Skypark Aurora 2BR Golf Course Sky Pool Stay",
+        "url": "https://www.airbnb.ru/rooms/1378726615428481213"
+      },
+      {
+        "label": "7",
+        "url": "https://www.airbnb.co.uk/rooms/1580246769750563859"
+      },
+      {
+        "label": "8",
+        "url": "https://www.airbnb.co.uk/rooms/1751397692414128186"
+      },
+      {
+        "label": "9",
+        "url": "https://www.airbnb.co.uk/rooms/1518627746427086485"
+      },
+      {
+        "label": "10",
+        "url": "https://www.airbnb.co.uk/rooms/1760135087661919496"
+      },
+      {
+        "label": "11",
+        "url": "https://www.airbnb.co.uk/rooms/1339581747046566941"
+      },
+      {
+        "label": "12",
+        "url": "https://www.airbnb.co.uk/rooms/1318761272977112991"
+      },
+      {
+        "label": "13",
+        "url": "https://www.airbnb.co.uk/rooms/1558010022322210744"
+      },
+      {
+        "label": "14",
+        "url": "https://www.airbnb.co.uk/rooms/1532339037484432313"
+      },
+      {
+        "label": "15",
+        "url": "https://www.airbnb.co.uk/rooms/950323040928950047"
+      },
+      {
+        "label": "16",
+        "url": "https://www.airbnb.co.uk/rooms/1777463512035290391"
+      }
+    ],
+    "_comment": "https://www.airbnb.co.uk/s/Space-Cherngtalay-Condominium--Thalang-District--Phuket--Thailand/homes?acp_id=t-g-ChIJjbvWhk85UDARBZQpOMCwatM&adults=2&checkin=2026-12-04&checkout=2026-12-14&date_picker_type=calendar&ref_fsid=5bcb821d-4412-474c-9fa0-4867f3f73395&ref_search_session_id=c6010ff8-18bb-4b4c-8c4c-8b62c4c4ea37&search_mode=regular_search&source=structured_search_input_header&place_id=ChIJjbvWhk85UDARBZQpOMCwatM&refinement_paths%5B%5D=%2Fhomes&flexible_start_date_search_filter_type=3&flexible_end_date_search_filter_type=1&flexible_trip_lengths%5B%5D=one_week&ne_lat=8.002571276738239&sw_lat=8.000032272198265&ne_lng=98.30234210517506&sw_lng=98.29978571467791&monthly_start_date=2026-11-01&monthly_length=3&monthly_end_date=2027-02-01&search_by_map=true&disable_auto_translation=true&price_filter_input_type=2&price_filter_num_nights=10&channel=EXPLORE&zoom=18.926539169978717&search_type=user_map_move&zoom_level=18.926539169978717"
+  },
+  "serenity": {
+    "label": "serenity1br",
+    "url": "",
+    "competitors": [
+      {
+        "label": "1",
+        "url": "https://www.airbnb.co.uk/rooms/1763695701985677706"
+      },
+      {
+        "label": "2",
+        "url": "https://www.airbnb.co.uk/rooms/1753088656177629219"
+      },
+      {
+        "label": "3",
+        "url": "https://www.airbnb.co.uk/rooms/1750176733233461013"
+      },
+      {
+        "label": "4",
+        "url": "https://www.airbnb.co.uk/rooms/1725929982351382262"
+      },
+      {
+        "label": "5",
+        "url": "https://www.airbnb.co.uk/rooms/1748448783360233579"
+      },
+      {
+        "label": "6",
+        "url": "https://www.airbnb.co.uk/rooms/1747299862252575033"
+      }
+    ],
+    "comment": ""
+  },
+  "legendary1br": {
+    "label": "legendary",
+    "url": "",
+    "competitors": [
+      {
+        "label": "1",
+        "url": "https://www.airbnb.ru/rooms/1511427099850715427"
+      },
+      {
+        "label": "2",
+        "url": "https://www.airbnb.ru/rooms/1657684551580925245"
+      },
+      {
+        "label": "3",
+        "url": "https://www.airbnb.ru/rooms/1577592292127402836"
+      },
+      {
+        "label": "4",
+        "url": "https://www.airbnb.ru/rooms/1684853640018271287"
+      },
+      {
+        "label": "5",
+        "url": "https://www.airbnb.co.uk/rooms/1622966442349350205"
+      },
+      {
+        "label": "6",
+        "url": "https://www.airbnb.co.uk/rooms/1564295331401651337"
+      },
+      {
+        "label": "7",
+        "url": "https://www.airbnb.co.uk/rooms/1511427099850715427"
+      },
+      {
+        "label": "8",
+        "url": "https://www.airbnb.co.uk/rooms/1607902866423132694"
+      },
+      {
+        "label": "10",
+        "url": "https://www.airbnb.co.uk/rooms/1573766215548260335"
+      },
+      {
+        "label": "11",
+        "url": "https://www.airbnb.co.uk/rooms/1764995124539814629"
+      },
+      {
+        "label": "12",
+        "url": "https://www.airbnb.co.uk/rooms/1675112054160674541"
+      },
+      {
+        "label": "13",
+        "url": "https://www.airbnb.co.uk/rooms/1586105943723058364"
+      }
+    ],
+    "comment": ""
+  },
+  "legendary2br": {
+    "label": "legendary2br",
+    "url": "",
+    "competitors": [
+      {
+        "label": "1",
+        "url": "https://www.airbnb.co.uk/rooms/1575004857902628522"
+      },
+      {
+        "label": "2",
+        "url": "https://www.airbnb.co.uk/rooms/1556513677605337966"
+      },
+      {
+        "label": "3",
+        "url": "https://www.airbnb.co.uk/rooms/1579081935988596007"
+      },
+      {
+        "label": "4",
+        "url": "https://www.airbnb.co.uk/rooms/1547833469787071688"
+      },
+      {
+        "label": "4",
+        "url": "https://www.airbnb.co.uk/rooms/1562752517093388907"
+      },
+      {
+        "label": "4",
+        "url": "https://www.airbnb.co.uk/rooms/1780961228237724123"
+      },
+      {
+        "label": "4",
+        "url": "https://www.airbnb.co.uk/rooms/1633318830107298712"
+      },
+      {
+        "label": "4",
+        "url": "https://www.airbnb.co.uk/rooms/1548523968514692099"
+      },
+      {
+        "label": "4",
+        "url": "https://www.airbnb.co.uk/rooms/1728091375276214131"
+      },
+      {
+        "label": "4",
+        "url": "https://www.airbnb.co.uk/rooms/1653528392108713026"
+      }
+    ],
+    "comment": ""
+  },
+  "space": {
+    "label": "space",
+    "url": "",
+    "competitors": [
+      {
+        "label": "1",
+        "url": "https://www.airbnb.co.uk/rooms/1576927319906040902"
+      },
+      {
+        "label": "2",
+        "url": "https://www.airbnb.co.uk/rooms/1612204178513436925"
+      },
+      {
+        "label": "3",
+        "url": "https://www.airbnb.co.uk/rooms/1735878270317140782"
+      },
+      {
+        "label": "4",
+        "url": "https://www.airbnb.co.uk/rooms/1547721848546970943"
+      },
+      {
+        "label": "5",
+        "url": "https://www.airbnb.co.uk/rooms/1555452982550628235"
+      }
+    ],
+    "_comment": "https://www.airbnb.co.uk/s/Space-Cherngtalay-Condominium--Thalang-District--Phuket--Thailand/homes?acp_id=t-g-ChIJjbvWhk85UDARBZQpOMCwatM&checkin=2026-10-20&checkout=2026-10-30&date_picker_type=calendar&ref_fsid=513974e5-003a-4299-9278-7bd3cb69fb05&ref_search_session_id=57c5ebca-4306-4e97-8a45-29704f671eee&search_mode=regular_search&place_id=ChIJjbvWhk85UDARBZQpOMCwatM&refinement_paths%5B%5D=%2Fhomes&flexible_start_date_search_filter_type=3&flexible_end_date_search_filter_type=3&flexible_trip_lengths%5B%5D=one_week&ne_lat=7.994929361070009&sw_lat=7.994128949590771&ne_lng=98.30856644194819&sw_lng=98.30776056299663&monthly_start_date=2026-11-01&monthly_length=3&monthly_end_date=2027-02-01&search_by_map=true&disable_auto_translation=true&price_filter_input_type=2&price_filter_num_nights=10&channel=EXPLORE&zoom=20.592012342023818&search_type=user_map_move&zoom_level=20.592012342023818"
+  }
 }
