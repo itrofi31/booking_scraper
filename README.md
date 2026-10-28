@@ -14,7 +14,7 @@ playwright install chromium
 
 ### 2. Запуск — одна дата
 ```bash
-python scraper.py --checkin 2025-07-15 --checkout 2025-07-16 --adults 2
+python scraper.py --checkin 2027-07-05 --checkout 2027-07-16 --adults 2
 ```
 
 ### 3. Запуск — пакет дат (рекомендуется)
